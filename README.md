@@ -29,6 +29,19 @@ docker compose up -d --wait
 
 The PostgreSQL container applies `schema/migrations/001_initial.sql` and then loads the supplied small fixture from `schema/seed_data.sql` when its data volume is first created.
 
+Run both database checks:
+
+```bash
+./scripts/db_smoke_test.sh
+./scripts/security_smoke_test.sh
+```
+
+Apply a new migration to an existing local volume with:
+
+```bash
+./scripts/apply_local_migration.sh schema/migrations/003_security.sql
+```
+
 Stop the database without deleting its data:
 
 ```bash
@@ -37,7 +50,7 @@ docker compose down
 
 ## Current status
 
-Phase 1 — local PostgreSQL schema and fixture loading.
+Phase 2 — PostgreSQL RLS and role-based WAC protection.
 
 ## Source material
 
