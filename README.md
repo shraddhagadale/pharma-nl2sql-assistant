@@ -62,9 +62,15 @@ POSTGRES_DB=pharma_full ./scripts/security_smoke_test.sh
 
 The generated CSVs are ignored by Git. The loader refuses to write into an already initialized target database; choose another `FULL_POSTGRES_DB` name when a clean reload is required.
 
+## AWS infrastructure
+
+Terraform for the demo AWS foundation is under `infra/terraform`. It provisions EC2, non-public RDS PostgreSQL, private S3 staging, an RDS-managed Secrets Manager credential, CloudWatch logs, Systems Manager access, IAM, and security groups in the account's default VPC.
+
+See `infra/terraform/README.md` for review, cost, plan, apply, verification, and teardown instructions. Running Terraform locally does not happen automatically and no AWS resources are created merely by cloning this repository.
+
 ## Current status
 
-Phase 3 — full-data loading and performance validation.
+Phase 4 — AWS infrastructure as code.
 
 ## Source material
 

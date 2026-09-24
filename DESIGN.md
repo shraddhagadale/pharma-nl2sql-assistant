@@ -133,7 +133,7 @@ Period offsets are preferred over date arithmetic because they encode the report
 
 ## 8. AWS networking decision
 
-The demo will use the account's default VPC rather than create a production network topology. EC2 is reachable through HTTPS. RDS remains non-public and accepts PostgreSQL traffic only from the EC2 security group. No custom private-subnet, NAT gateway, or VPC-endpoint module is included in V1.
+The demo will use the account's default VPC rather than create a production network topology. The infrastructure checkpoint exposes a temporary HTTP health endpoint from EC2; the final deployment adds a trusted HTTPS endpoint after the domain and reverse-proxy or load-balancer decision is available. RDS remains non-public and accepts PostgreSQL traffic only from the EC2 security group. EC2 administration uses Systems Manager rather than inbound SSH. No custom private-subnet, NAT gateway, or VPC-endpoint module is included in V1.
 
 This keeps the infrastructure understandable and inexpensive while preserving the important application-to-database boundary. The data is synthetic and contains no PHI.
 

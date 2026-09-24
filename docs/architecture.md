@@ -110,7 +110,7 @@ Migrations and data loading use a separate administrative role that is never ava
 
 ```mermaid
 flowchart TB
-    Internet -->|HTTPS| EC2[EC2: containerized web application]
+    Internet -->|HTTP health check; HTTPS in application deployment| EC2[EC2: containerized web application]
     EC2 -->|5432, EC2 security group only| RDS[(RDS PostgreSQL, non-public)]
     EC2 --> S3[S3 data staging]
     EC2 --> Secrets[Secrets Manager or SSM]

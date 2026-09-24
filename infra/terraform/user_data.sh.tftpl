@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euxo pipefail
+
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+dnf update -y
+dnf install -y amazon-cloudwatch-agent docker jq nginx
+
+systemctl enable --now docker
+systemctl enable --now amazon-ssm-agent
+
+mkdir -p /opt/pharma-nl2sql
+mkdir -p /var/log/pharma-nl2sql
+touch /var/log/pharma-nl2sql/app.log
+chown -R ec2-user:ec2-user /opt/pharma-nl2sql /var/log/pharma-nl2sql
+
+cat > /opt/pharma-nl2sql/infrastructure.env <<'ENVFILE'
+AWS_REGION=${aws_region}
+DATA_BUCKET=${data_bucket}
+DATABASE_HOST=${database_host}
+DATABASE_NAME=${database_name}
+DATABASE_PORT=${database_port}
+DATABASE_SECRET_ARN=${database_secret_arn}
+LOG_GROUP_NAME=${log_group_name}
+ENVFILE
+
+chmod 600 /opt/pharma-nl2sql/infrastructure.env
+chown ec2-user:ec2-user /opt/pharma-nl2sql/infrastructure.env
+
+cat > /usr/share/nginx/html/index.html <<'HTML'
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Pharma NL-to-SQL</title></head>
+  <body><h1>Infrastructure ready</h1><p>The application deployment has not started yet.</p></body>
+</html>
+HTML
+
+printf '%s\n' 'ok' > /usr/share/nginx/html/health
+systemctl enable --now nginx
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "agent": {
+    "region": "${aws_region}"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/user-data.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/user-data"
+          },
+          {
+            "file_path": "/var/log/pharma-nl2sql/app.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/app"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCONFIG
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+echo "${project_name} infrastructure bootstrap complete."

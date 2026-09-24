@@ -23,8 +23,13 @@ htmlcov/
 node_modules/
 frontend/dist/
 
-# Terraform local state and provider cache
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.*
-infra/.terraform.lock.hcl
+# Terraform local state, plans, variables, and provider cache
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/.terraform.tfstate.lock.info
+**/crash.log
+infra/terraform/*.tfvars
+infra/terraform/*.auto.tfvars
+!infra/terraform/terraform.tfvars.example
