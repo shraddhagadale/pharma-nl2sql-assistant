@@ -99,12 +99,18 @@ docs/
 Application identity and database login identity are separate:
 
 - The application session identifies a row in `users`.
+- A narrowly scoped authentication pool can read only the approved user-context columns.
 - The backend selects either the limited or executive database pool using that database-backed user record.
 - The transaction sets `app.user_id` locally.
 - RLS resolves scope from `users` and `zip_territory`.
 - Column grants on the selected database role determine whether `wac` is even addressable.
 
 Migrations and data loading use a separate administrative role that is never available to the request-serving process.
+
+All three runtime login roles use `NOINHERIT` and have no direct table grants.
+They can assume exactly one non-login group role: authentication, limited, or
+executive. Transactions are read-only and apply a local statement timeout before
+executing application SQL.
 
 ## Deployment topology
 

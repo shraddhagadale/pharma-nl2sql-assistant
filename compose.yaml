@@ -5,6 +5,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-pharma}
       POSTGRES_USER: ${POSTGRES_USER:-pharma_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only}
+      PHARMA_DB_AUTH_PASSWORD: ${PHARMA_DB_AUTH_PASSWORD:-local_auth_only}
+      PHARMA_DB_LIMITED_PASSWORD: ${PHARMA_DB_LIMITED_PASSWORD:-local_limited_only}
+      PHARMA_DB_EXEC_PASSWORD: ${PHARMA_DB_EXEC_PASSWORD:-local_exec_only}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     healthcheck:
@@ -18,7 +21,43 @@ services:
       - ./schema/seed_data.sql:/docker-entrypoint-initdb.d/002_seed_data.sql:ro
       - ./schema/migrations/003_security.sql:/docker-entrypoint-initdb.d/003_security.sql:ro
       - ./schema/migrations/004_optimize_rls.sql:/docker-entrypoint-initdb.d/004_optimize_rls.sql:ro
+      - ./schema/migrations/005_runtime_access.sql:/docker-entrypoint-initdb.d/005_runtime_access.sql:ro
+      - ./schema/init/006_runtime_logins.sh:/docker-entrypoint-initdb.d/006_runtime_logins.sh:ro
       - ./schema/generated:/data:ro
+
+  backend:
+    profiles: ["application"]
+    build:
+      context: ./backend
+    environment:
+      PHARMA_ENVIRONMENT: local
+      PHARMA_DB_HOST: postgres
+      PHARMA_DB_PORT: 5432
+      PHARMA_DB_NAME: ${POSTGRES_DB:-pharma}
+      PHARMA_DB_AUTH_USER: pharma_runtime_auth
+      PHARMA_DB_AUTH_PASSWORD: ${PHARMA_DB_AUTH_PASSWORD:-local_auth_only}
+      PHARMA_DB_LIMITED_USER: pharma_runtime_limited
+      PHARMA_DB_LIMITED_PASSWORD: ${PHARMA_DB_LIMITED_PASSWORD:-local_limited_only}
+      PHARMA_DB_EXEC_USER: pharma_runtime_exec
+      PHARMA_DB_EXEC_PASSWORD: ${PHARMA_DB_EXEC_PASSWORD:-local_exec_only}
+      PHARMA_SESSION_SECRET: ${PHARMA_SESSION_SECRET:-local-development-session-secret-change-me}
+      PHARMA_COOKIE_SECURE: "false"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://localhost:8000/ready', timeout=3)
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -48,6 +48,23 @@ Stop the database without deleting its data:
 docker compose down
 ```
 
+## Backend quick start
+
+Phase 5 provides the FastAPI backend, database-backed demo sessions, role-scoped
+connection pools, a predefined safe analytics endpoint, and structured audit
+events. There is no LLM or generated SQL in this phase.
+
+```bash
+docker compose up -d --wait postgres
+./scripts/setup_backend_db.sh
+docker compose --profile application up -d --build --wait backend
+curl http://localhost:8000/ready
+```
+
+The API is available at `http://localhost:8000`, with interactive documentation
+at `http://localhost:8000/docs`. See [docs/backend.md](docs/backend.md) for its
+routes, security boundaries, tests, and local workflow.
+
 ## Full synthetic dataset
 
 Generate and load the full dataset into a separate `pharma_full` database:
@@ -70,7 +87,7 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Phase 4 — AWS infrastructure as code.
+Phase 5 — role-scoped FastAPI backend.
 
 ## Source material
 
