@@ -44,6 +44,9 @@ metrics:
       - sales in dollars
       - dollar sales
       - wac
+      - pricing
+      - price
+      - list price
     aggregation: sum
     field: sales.wac
     filters:
@@ -114,7 +117,7 @@ metrics:
 
   - id: market_share
     label: Market share
-    description: NovaPharma distributor equivalents divided by total market equivalents.
+    description: NovaPharma distributor equivalents divided by total market equivalents in the same market subcategory.
     kind: ratio
     synonyms:
       - market share
@@ -226,6 +229,7 @@ time_windows:
       - prior 3 months
       - previous 3 months
       - prior r3m
+      - r6m
       - r6m comparison
     filter:
       field: sales.mo_offset

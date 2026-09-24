@@ -70,3 +70,14 @@ examples:
       time_window_id: r3m
       dimension_ids: []
       data_source_ids: [distributor]
+
+  - id: r3m_prior_r3m_comparison
+    question: Compare paid demand for R3M versus prior R3M.
+    role: director
+    expected:
+      status: allowed
+      metric_ids: [paid_demand]
+      time_window_id: prior_r3m
+      comparison_time_window_ids: [r3m]
+      dimension_ids: []
+      data_source_ids: [distributor]

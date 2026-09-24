@@ -1,7 +1,8 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -42,6 +43,19 @@ class Settings(BaseSettings):
     query_timeout_ms: int = 5_000
     db_pool_size: int = 5
     db_max_overflow: int = 5
+
+    openai_api_key: SecretStr | None = None
+    openai_model: str = "gpt-6-luna"
+    agent_max_repairs: int = Field(default=1, ge=0, le=2)
+    agent_max_rows: int = Field(default=100, ge=1, le=500)
+    domain_catalog_path: Path = (
+        Path(__file__).resolve().parents[2] / "domain" / "domain_catalog.yaml"
+    )
+
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def blank_api_key_is_unset(cls, value: object) -> object:
+        return None if value == "" else value
 
     @model_validator(mode="after")
     def reject_local_secrets_outside_local(self) -> "Settings":

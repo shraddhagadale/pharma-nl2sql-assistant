@@ -34,7 +34,7 @@ After intentionally changing a source document:
 2. inspect the differences in both files;
 3. preview stale provenance with `./scripts/refresh_domain_provenance.py`;
 4. refresh reviewed hashes with `./scripts/refresh_domain_provenance.py --write`;
-5. run `./scripts/validate_domain_catalog.py` and the backend tests.
+5. run `backend/.venv/bin/python scripts/validate_domain_catalog.py` and the backend tests.
 
 Refreshing a hash is an explicit review action, not automatic catalog
 regeneration. Automatically translating changed prose could conceal semantic

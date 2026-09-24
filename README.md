@@ -50,9 +50,10 @@ docker compose down
 
 ## Backend quick start
 
-Phase 5 provides the FastAPI backend, database-backed demo sessions, role-scoped
-connection pools, a predefined safe analytics endpoint, and structured audit
-events. There is no LLM or generated SQL in this phase.
+The FastAPI backend provides database-backed demo sessions, role-scoped
+connection pools, a predefined safe analytics endpoint, and the structured
+NL-to-SQL workflow. Copy `.env.example` to `.env` and set
+`PHARMA_OPENAI_API_KEY` to enable model-backed chat.
 
 ```bash
 docker compose up -d --wait postgres
@@ -65,6 +66,9 @@ The API is available at `http://localhost:8000`, with interactive documentation
 at `http://localhost:8000/docs`. See [docs/backend.md](docs/backend.md) for its
 routes, security boundaries, tests, and local workflow.
 
+The conversational route is `POST /api/v1/chat`. Its model, validator, repair,
+execution, and fallback boundaries are documented in [docs/agent.md](docs/agent.md).
+
 ## Domain catalog
 
 Phase 6 adds a deterministic, provenance-checked catalog of pharmaceutical
@@ -72,7 +76,7 @@ metrics, time windows, dimensions, data sources, and security rules. Validate
 it independently with:
 
 ```bash
-./scripts/validate_domain_catalog.py
+backend/.venv/bin/python scripts/validate_domain_catalog.py
 ```
 
 The supplied Markdown files remain authoritative. See
@@ -102,9 +106,10 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Checkpoint 3 complete — secure backend verified locally and from EC2 against
-private RDS. See [docs/aws_checkpoint_3.md](docs/aws_checkpoint_3.md). Next:
-Phase 7, the structured NL-to-SQL agent.
+Phase 7 complete — the structured NL-to-SQL workflow is implemented and locally
+verified through the real PostgreSQL/RLS execution path. A live remote-model
+smoke test requires a separately supplied API key. Next: Phase 8, the React and
+TypeScript chat interface.
 
 ## Source material
 

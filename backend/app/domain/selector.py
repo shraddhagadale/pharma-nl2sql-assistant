@@ -1,7 +1,7 @@
 import re
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.models import DomainCatalog
 from app.models import UserRole
@@ -18,6 +18,7 @@ class DomainSelection(BaseModel):
     status: SelectionStatus
     metric_ids: list[str]
     time_window_id: str
+    comparison_time_window_ids: list[str] = Field(default_factory=list)
     dimension_ids: list[str]
     data_source_ids: list[str]
     denied_reason: str | None = None
@@ -28,18 +29,32 @@ class DomainRuleSelector:
     def __init__(self, catalog: DomainCatalog) -> None:
         self.catalog = catalog
 
-    def select(self, question: str, *, role: UserRole) -> DomainSelection:
+    def select(
+        self,
+        question: str,
+        *,
+        role: UserRole,
+        context_question: str | None = None,
+    ) -> DomainSelection:
         normalized = self._normalize(question)
         if not normalized:
             raise ValueError("question must not be blank")
+        normalized_context = self._normalize(context_question or "")
 
         metrics = self._matching_definitions(normalized, self.catalog.metrics)[:1]
+        if not metrics and normalized_context:
+            metrics = self._matching_definitions(normalized_context, self.catalog.metrics)[:1]
         if not metrics:
             metrics = [self.catalog.metrics_by_id[self.catalog.defaults.metric]]
 
-        windows = self._matching_definitions(normalized, self.catalog.time_windows)[:1]
+        windows = self._matching_definitions(normalized, self.catalog.time_windows)
+        if not windows and normalized_context:
+            windows = self._matching_definitions(normalized_context, self.catalog.time_windows)
         time_window_id = windows[0].id if windows else self.catalog.defaults.time_window
+        comparison_time_window_ids = [window.id for window in windows[1:]]
         dimensions = self._matching_definitions(normalized, self.catalog.dimensions)
+        if not dimensions and normalized_context:
+            dimensions = self._matching_definitions(normalized_context, self.catalog.dimensions)
 
         denied_metric = next(
             (metric for metric in metrics if metric.requires_wac and role != UserRole.EXEC),
@@ -54,6 +69,7 @@ class DomainRuleSelector:
                 status=SelectionStatus.DENIED,
                 metric_ids=[metric.id for metric in metrics],
                 time_window_id=time_window_id,
+                comparison_time_window_ids=comparison_time_window_ids,
                 dimension_ids=[dimension.id for dimension in dimensions],
                 data_source_ids=data_source_ids,
                 denied_reason="WAC-derived revenue is available only to executives.",
@@ -64,6 +80,7 @@ class DomainRuleSelector:
             status=SelectionStatus.ALLOWED,
             metric_ids=[metric.id for metric in metrics],
             time_window_id=time_window_id,
+            comparison_time_window_ids=comparison_time_window_ids,
             dimension_ids=[dimension.id for dimension in dimensions],
             data_source_ids=data_source_ids,
         )

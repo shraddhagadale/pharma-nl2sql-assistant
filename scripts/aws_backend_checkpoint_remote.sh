@@ -87,7 +87,11 @@ PHARMA_COOKIE_SECURE=false
 ENVFILE
 chmod 600 "$work_dir/backend.env"
 
-docker build --quiet --tag pharma-backend-checkpoint:latest "$work_dir/backend" >/dev/null
+docker build \
+    --quiet \
+    --file "$work_dir/backend/Dockerfile" \
+    --tag pharma-backend-checkpoint:latest \
+    "$work_dir" >/dev/null
 docker run \
     --detach \
     --name "$container_name" \

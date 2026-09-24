@@ -40,5 +40,46 @@ class AnalyticsOverview(BaseModel):
     assumptions: list[str]
 
 
+class ConversationRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ConversationTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: ConversationRole
+    content: str = Field(min_length=1, max_length=1_000)
+
+
+class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=2_000)
+    conversation: list[ConversationTurn] = Field(default_factory=list, max_length=6)
+    include_sql: bool = False
+
+
+class ChatStatus(StrEnum):
+    ANSWERED = "answered"
+    DENIED = "denied"
+    REJECTED = "rejected"
+
+
+JsonScalar = str | int | float | bool | None
+
+
+class ChatResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: ChatStatus
+    answer: str
+    columns: list[str] = Field(default_factory=list)
+    rows: list[dict[str, JsonScalar]] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    sql: str | None = None
+    request_id: str
+
+
 class HealthResponse(BaseModel):
     status: str

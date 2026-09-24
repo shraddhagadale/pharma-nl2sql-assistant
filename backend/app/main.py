@@ -6,14 +6,18 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import analytics, health, sessions
+from app.agent.provider import PlanningModel
+from app.api import analytics, chat, health, sessions
 from app.config import Settings, get_settings
 from app.services.container import Services
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    planning_model: PlanningModel | None = None,
+) -> FastAPI:
     resolved_settings = settings or get_settings()
-    services = Services.build(resolved_settings)
+    services = Services.build(resolved_settings, planning_model)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -47,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health.router)
     application.include_router(sessions.router, prefix=resolved_settings.api_prefix)
     application.include_router(analytics.router, prefix=resolved_settings.api_prefix)
+    application.include_router(chat.router, prefix=resolved_settings.api_prefix)
     return application
 
 

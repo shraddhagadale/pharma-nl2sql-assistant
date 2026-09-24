@@ -13,6 +13,8 @@ class AuditEvent:
     duration_ms: float
     row_count: int
     error_code: str | None = None
+    sql_fingerprint: str | None = None
+    repair_count: int | None = None
 
 
 class AuditLogger:

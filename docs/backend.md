@@ -1,8 +1,8 @@
 # Backend foundation
 
-Phase 5 adds a deterministic FastAPI backend without an LLM or generated SQL.
-It proves the authentication, database-role, RLS, WAC, execution, and audit
-boundaries before an agent is introduced.
+Phase 5 established the deterministic FastAPI security boundary. Phase 7 adds
+the structured NL-to-SQL workflow without changing which component authorizes
+or executes database access.
 
 ## Runtime identities
 
@@ -32,11 +32,17 @@ region, territory, or WAC flag.
 | `GET` | `/api/v1/demo/session` | Resolve the current session from PostgreSQL |
 | `DELETE` | `/api/v1/demo/session` | Clear the current session |
 | `GET` | `/api/v1/analytics/overview?months=3` | Run one predefined scoped analytic |
+| `POST` | `/api/v1/chat` | Plan, validate, execute, and summarize a conversational analytic |
 
 The overview endpoint uses a static, parameterized query. Limited roles never
 address `sales.wac`; only the executive query contains the revenue expression.
 The assumptions returned by the endpoint state the distributor, branded-product,
 and period-offset defaults explicitly.
+
+The chat endpoint uses the same database-backed session and pools. Its generated
+SQL must pass the deterministic AST and domain-rule validator before the
+executor sees it. See [agent.md](agent.md) for the workflow, configuration, and
+safe-failure behavior.
 
 ## Local setup
 

@@ -28,7 +28,8 @@ services:
   backend:
     profiles: ["application"]
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       PHARMA_ENVIRONMENT: local
       PHARMA_DB_HOST: postgres
@@ -42,6 +43,10 @@ services:
       PHARMA_DB_EXEC_PASSWORD: ${PHARMA_DB_EXEC_PASSWORD:-local_exec_only}
       PHARMA_SESSION_SECRET: ${PHARMA_SESSION_SECRET:-local-development-session-secret-change-me}
       PHARMA_COOKIE_SECURE: "false"
+      PHARMA_OPENAI_API_KEY: ${PHARMA_OPENAI_API_KEY:-}
+      PHARMA_OPENAI_MODEL: ${PHARMA_OPENAI_MODEL:-gpt-6-luna}
+      PHARMA_AGENT_MAX_REPAIRS: ${PHARMA_AGENT_MAX_REPAIRS:-1}
+      PHARMA_AGENT_MAX_ROWS: ${PHARMA_AGENT_MAX_ROWS:-100}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:

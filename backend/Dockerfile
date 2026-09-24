@@ -3,10 +3,13 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY pyproject.toml ./
-COPY app ./app
+COPY backend/pyproject.toml ./
+COPY backend/app ./app
+COPY domain /app/domain
+COPY docs /app/docs
+COPY schema/migrations/001_initial.sql /app/schema/migrations/001_initial.sql
 
 RUN pip install --no-cache-dir .
 

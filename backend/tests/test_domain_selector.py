@@ -36,3 +36,16 @@ def test_golden_domain_selection(example: dict) -> None:
 def test_blank_question_is_rejected() -> None:
     with pytest.raises(ValueError, match="question must not be blank"):
         DomainRuleSelector(CATALOG).select("   ", role=UserRole.EXEC)
+
+
+def test_follow_up_inherits_only_missing_domain_slots() -> None:
+    selection = DomainRuleSelector(CATALOG).select(
+        "What about last month?",
+        role=UserRole.RAM,
+        context_question="Show paid demand by territory for the last 3 months.",
+    )
+
+    assert selection.metric_ids == ["paid_demand"]
+    assert selection.time_window_id == "last_month"
+    assert selection.comparison_time_window_ids == []
+    assert selection.dimension_ids == ["territory"]
