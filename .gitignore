@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
+schema/generated/
+
+# Local source checkout used only as the assignment reference.
+/assignment/
+
+# Application and test artifacts
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+node_modules/
+frontend/dist/
+
+# Terraform local state and provider cache
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/.terraform.lock.hcl
