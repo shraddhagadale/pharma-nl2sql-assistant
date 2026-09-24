@@ -66,6 +66,19 @@ cd backend
 
 The integration suite requires the local PostgreSQL container on port `5433`.
 
+Run the same HTTP-level session, RLS-scope, and revenue-visibility assertions
+used by AWS Checkpoint 3 with:
+
+```bash
+./scripts/backend_api_smoke_test.py http://localhost:8000
+```
+
+The EC2-only `scripts/aws_backend_checkpoint_remote.sh` runner is intentionally
+ephemeral: it applies the idempotent runtime-access migration, generates
+one-run credentials on the instance, runs the backend against private RDS, and
+then removes the container and image and restores all runtime accounts to
+`NOLOGIN`. It is a checkpoint tool, not the Phase 9 deployment mechanism.
+
 ## Audit foundation
 
 Session and analytics operations emit structured JSON with request ID, user ID,

@@ -102,7 +102,9 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Phase 6 — deterministic, catalog-backed business rules.
+Checkpoint 3 complete — secure backend verified locally and from EC2 against
+private RDS. See [docs/aws_checkpoint_3.md](docs/aws_checkpoint_3.md). Next:
+Phase 7, the structured NL-to-SQL agent.
 
 ## Source material
 
