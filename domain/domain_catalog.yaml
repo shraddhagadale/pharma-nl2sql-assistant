@@ -1,0 +1,465 @@
+version: 1
+schema_source: schema/migrations/001_initial.sql
+
+defaults:
+  metric: paid_demand
+  time_window: r3m
+  account_dimension: account
+
+metrics:
+  - id: paid_demand
+    label: Paid demand
+    description: NovaPharma branded product volume sold through distributors.
+    kind: aggregate
+    synonyms:
+      - paid demand
+      - sales volume
+      - units sold
+      - pack units
+      - volume
+      - sales
+    aggregation: sum
+    field: sales.pack_units
+    filters:
+      - field: sales.data_source
+        operator: eq
+        value: distributor
+      - field: sales.brand_flag
+        operator: eq
+        value: 1
+    data_sources:
+      - distributor
+    sources:
+      - path: docs/metric_definitions.md
+        heading: Paid Demand
+        section_sha256: "0db0fa3a9f73152eeb0c186cec9d5e82af2fedc41a428f8397d59906268c682b"
+
+  - id: gross_revenue
+    label: Gross revenue (WAC)
+    description: Distributor list-price revenue for NovaPharma branded products.
+    kind: aggregate
+    synonyms:
+      - gross revenue
+      - revenue
+      - sales in dollars
+      - dollar sales
+      - wac
+    aggregation: sum
+    field: sales.wac
+    filters:
+      - field: sales.data_source
+        operator: eq
+        value: distributor
+      - field: sales.brand_flag
+        operator: eq
+        value: 1
+    data_sources:
+      - distributor
+    requires_wac: true
+    alternative_metric: paid_demand
+    sources:
+      - path: docs/metric_definitions.md
+        heading: Gross Revenue (WAC)
+        section_sha256: "c5919b278ac59c5a5efe6e0defcf4a25794399b89d6511bb27319534780e30d7"
+      - path: docs/security_model.md
+        heading: Column-Level Security — WAC Restriction
+        section_sha256: "9e7135f3780a19300227ee3873a86de9c1c7def25fb45afcd1a3dfec54f1e222"
+
+  - id: equivalents
+    label: Equivalents
+    description: Pack volume normalized by each product's unit conversion factor.
+    kind: aggregate
+    synonyms:
+      - equivalents
+      - equivalent units
+      - normalized units
+    aggregation: sum
+    expression:
+      operator: multiply
+      fields:
+        - sales.pack_units
+        - products.unit_conversion_factor
+    joins:
+      - left: sales.ndc
+        right: products.ndc
+    data_sources:
+      - distributor
+    sources:
+      - path: docs/metric_definitions.md
+        heading: Equivalents
+        section_sha256: "cc50346907624d25e7db1869aaa20a27a7dbfde1f35c5a60a2425b809aa3dd51"
+
+  - id: hub_volume
+    label: Free-drug volume
+    description: Units dispensed through the patient assistance hub at no charge.
+    kind: aggregate
+    synonyms:
+      - free drug
+      - hub volume
+      - hub dispense
+      - patient assistance
+      - pap volume
+    aggregation: sum
+    field: sales.pack_units
+    filters:
+      - field: sales.data_source
+        operator: eq
+        value: hub_dispense
+    data_sources:
+      - hub_dispense
+    sources:
+      - path: docs/data_source_guide.md
+        heading: "`hub_dispense`"
+        section_sha256: "b5ef58e978a25f274ec99f39aa35b20e9c518a81ea34493c545d505b7a9b9990"
+
+  - id: market_share
+    label: Market share
+    description: NovaPharma distributor equivalents divided by total market equivalents.
+    kind: ratio
+    synonyms:
+      - market share
+      - share of market
+      - market percentage
+    numerator:
+      metric: equivalents
+      filters:
+        - field: sales.data_source
+          operator: eq
+          value: distributor
+        - field: sales.brand_flag
+          operator: eq
+          value: 1
+    denominator:
+      metric: equivalents
+      filters:
+        - field: sales.data_source
+          operator: eq
+          value: market_data
+    zero_denominator: "null"
+    data_sources:
+      - distributor
+      - market_data
+    sources:
+      - path: docs/metric_definitions.md
+        heading: Market Share
+        section_sha256: "df313536913732522175fe7d7952983ea8420b25ff8bf3c14a6454f21e286710"
+
+time_windows:
+  - id: current_week
+    label: Current week
+    synonyms:
+      - current week
+      - this week
+    filter:
+      field: sales.wk_offset
+      operator: eq
+      value: 0
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+  - id: last_4_weeks
+    label: Last 4 weeks
+    synonyms:
+      - last 4 weeks
+      - past 4 weeks
+      - rolling 4 weeks
+    filter:
+      field: sales.wk_offset
+      operator: lte
+      value: 3
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+  - id: current_month
+    label: Current month
+    synonyms:
+      - current month
+      - this month
+    filter:
+      field: sales.mo_offset
+      operator: eq
+      value: 0
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+  - id: last_month
+    label: Last month
+    synonyms:
+      - last month
+      - previous month
+      - prior month
+    filter:
+      field: sales.mo_offset
+      operator: eq
+      value: 1
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+  - id: r3m
+    label: Rolling 3 months
+    synonyms:
+      - rolling 3 months
+      - last 3 months
+      - past 3 months
+      - r3m
+    filter:
+      field: sales.mo_offset
+      operator: in
+      value: [0, 1, 2]
+    sources:
+      - path: docs/metric_definitions.md
+        heading: R3M (Rolling 3 Months)
+        section_sha256: "8a11cccdca05e017335d3deb49230defb77e2a1d13fca5ba22f12af9bfede60c"
+
+  - id: prior_r3m
+    label: Prior rolling 3 months
+    synonyms:
+      - prior rolling 3 months
+      - prior 3 months
+      - previous 3 months
+      - prior r3m
+      - r6m comparison
+    filter:
+      field: sales.mo_offset
+      operator: in
+      value: [3, 4, 5]
+    notes: This is the three-month comparison window preceding R3M, not a six-month sum.
+    sources:
+      - path: docs/metric_definitions.md
+        heading: R6M (Rolling 6 Months, Prior Period)
+        section_sha256: "b205acc3ba993d11be831df6ba7e73657107486292fe40ab0248020f2da9c0cb"
+
+  - id: rolling_6_months
+    label: Rolling 6 months
+    synonyms:
+      - rolling 6 months
+      - last 6 months
+      - past 6 months
+    filter:
+      field: sales.mo_offset
+      operator: between
+      value: [0, 5]
+    notes: Full six-month window; distinct from the prior-R3M comparison period.
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+  - id: last_quarter
+    label: Last quarter
+    synonyms:
+      - last quarter
+      - previous quarter
+      - prior quarter
+    filter:
+      field: sales.mo_offset
+      operator: in
+      value: [1, 2, 3]
+    sources:
+      - path: docs/period_offsets.md
+        heading: Common Time Windows
+        section_sha256: "aab954afa83b5009b700771539b44ec424875294ae2ca9fde3bfbc86372edb37"
+
+dimensions:
+  - id: account
+    label: Account
+    synonyms:
+      - account
+      - accounts
+      - top accounts
+      - health system
+      - grandparent
+    expression:
+      function: coalesce
+      fields:
+        - organizations.grandparent_org_name
+        - organizations.org_name
+    joins:
+      - left: sales.org_id
+        right: organizations.org_id
+    sources:
+      - path: docs/metric_definitions.md
+        heading: Account-Level Aggregation
+        section_sha256: "f9a78c366c955f3cc88e546f6e6656abf25b5718fffe6a3f5278ed65e1e00fb4"
+
+  - id: product
+    label: Product
+    synonyms:
+      - product
+      - products
+      - by product
+      - by drug name
+      - brand
+    expression:
+      fields:
+        - sales.drug_name
+    sources:
+      - path: docs/product_analytics.md
+        heading: Product Performance & Ranking
+        section_sha256: "4ebbe99b36e0efcf3a49d0ec56a4f822adf9885eb2dbffc563c01012892da00b"
+
+  - id: month
+    label: Month
+    synonyms:
+      - monthly
+      - by month
+      - month over month
+    expression:
+      fields:
+        - sales.period_mo
+    sources:
+      - path: docs/period_offsets.md
+        heading: Period Label Columns
+        section_sha256: "882dabf25b9ea6532a6b74efd9c7989a4640e49fede93217c9d2c4b619f7bd7d"
+
+  - id: quarter
+    label: Quarter
+    synonyms:
+      - quarterly
+      - by quarter
+      - quarter over quarter
+    expression:
+      fields:
+        - sales.period_qtr
+    sources:
+      - path: docs/period_offsets.md
+        heading: Period Label Columns
+        section_sha256: "882dabf25b9ea6532a6b74efd9c7989a4640e49fede93217c9d2c4b619f7bd7d"
+
+  - id: territory
+    label: Territory
+    synonyms:
+      - territory
+      - territories
+      - by territory
+    expression:
+      fields:
+        - zip_territory.territory_name
+    joins:
+      - left: sales.org_id
+        right: organizations.org_id
+      - left: organizations.zip
+        right: zip_territory.zip
+    sources:
+      - path: docs/org_hierarchy.md
+        heading: Joining Sales to Hierarchy
+        section_sha256: "824cc1ee01deab87c8844a855f127ff10a6226e0f295453f4f7852a8acf61ca1"
+
+  - id: region
+    label: Region
+    synonyms:
+      - region
+      - regions
+      - by region
+    expression:
+      fields:
+        - zip_territory.region_name
+    joins:
+      - left: sales.org_id
+        right: organizations.org_id
+      - left: organizations.zip
+        right: zip_territory.zip
+    sources:
+      - path: docs/org_hierarchy.md
+        heading: Joining Sales to Hierarchy
+        section_sha256: "824cc1ee01deab87c8844a855f127ff10a6226e0f295453f4f7852a8acf61ca1"
+
+  - id: market_subcategory
+    label: Market subcategory
+    synonyms:
+      - market subcategory
+      - therapeutic area
+      - market category
+    expression:
+      fields:
+        - products.market_subcategory
+    joins:
+      - left: sales.ndc
+        right: products.ndc
+    sources:
+      - path: docs/market_classification.md
+        heading: Using Market Classification for Queries
+        section_sha256: "6e4bdd1a129b0edddc8b5caf6ba9ba107e6ca5d7ab0b0308e5043e6d781acffe"
+
+data_sources:
+  - id: distributor
+    label: Distributor shipments
+    value: distributor
+    synonyms:
+      - distributor
+      - shipment
+      - paid demand
+    description: NovaPharma paid shipment data and the source for actual WAC revenue.
+    include_by_default: true
+    wac_semantics: Actual transaction list-price revenue.
+    sources:
+      - path: docs/data_source_guide.md
+        heading: "`distributor`"
+        section_sha256: "7dbea04f7d1dc63839cde9d278b597ed902e220d5a8e0dfa79daf803926c2116"
+
+  - id: hub_dispense
+    label: Hub dispense
+    value: hub_dispense
+    synonyms:
+      - hub dispense
+      - free drug
+      - patient assistance
+      - pap
+    description: Free-drug patient assistance transactions, excluded from paid demand.
+    include_by_default: false
+    wac_semantics: Always zero because the drug is provided at no charge.
+    sources:
+      - path: docs/data_source_guide.md
+        heading: "`hub_dispense`"
+        section_sha256: "b5ef58e978a25f274ec99f39aa35b20e9c518a81ea34493c545d505b7a9b9990"
+
+  - id: market_data
+    label: Market data
+    value: market_data
+    synonyms:
+      - market data
+      - competitive data
+      - competitors
+      - total market
+    description: Third-party estimated volume across all manufacturers.
+    include_by_default: false
+    wac_semantics: Estimated values that must not be used as actual revenue.
+    sources:
+      - path: docs/data_source_guide.md
+        heading: "`market_data`"
+        section_sha256: "9f05659b799a662b794fe48c8f89cb0d71e6a0d4d41198d35462ab047d1c01a0"
+
+security_rules:
+  - id: role_row_scope
+    roles: [exec, director, ram]
+    effect: database_rls
+    sources:
+      - path: docs/security_model.md
+        heading: Row-Level Security — Territory / Region Filtering
+        section_sha256: "2909a26faf6005cb1cb71c42b714858afc526a4e946c7bce45c4ff301667a384"
+
+  - id: wac_exec_only
+    roles: [director, ram]
+    effect: deny
+    protected_field: sales.wac
+    alternative_metric: paid_demand
+    sources:
+      - path: docs/security_model.md
+        heading: Column-Level Security — WAC Restriction
+        section_sha256: "9e7135f3780a19300227ee3873a86de9c1c7def25fb45afcd1a3dfec54f1e222"
+
+  - id: market_data_row_scope
+    roles: [exec, director, ram]
+    effect: database_rls
+    sources:
+      - path: docs/security_model.md
+        heading: Market Data Access
+        section_sha256: "29ad35f9114690095aa6d231a8d4644366800ba6aa6ce94a4d033950ee0b3147"

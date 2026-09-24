@@ -1,0 +1,72 @@
+version: 1
+examples:
+  - id: ram_market_share_by_territory
+    question: Show market share by territory for the last 3 months.
+    role: ram
+    expected:
+      status: allowed
+      metric_ids: [market_share]
+      time_window_id: r3m
+      dimension_ids: [territory]
+      data_source_ids: [distributor, market_data]
+
+  - id: exec_revenue_last_month
+    question: What was gross revenue last month?
+    role: exec
+    expected:
+      status: allowed
+      metric_ids: [gross_revenue]
+      time_window_id: last_month
+      dimension_ids: []
+      data_source_ids: [distributor]
+
+  - id: ram_revenue_is_denied
+    question: Show my sales in dollars last month.
+    role: ram
+    expected:
+      status: denied
+      metric_ids: [gross_revenue]
+      time_window_id: last_month
+      dimension_ids: []
+      data_source_ids: [distributor]
+      alternative_metric_id: paid_demand
+
+  - id: director_top_accounts
+    question: Rank the top accounts by pack units last quarter.
+    role: director
+    expected:
+      status: allowed
+      metric_ids: [paid_demand]
+      time_window_id: last_quarter
+      dimension_ids: [account]
+      data_source_ids: [distributor]
+
+  - id: ram_free_drug
+    question: How much free drug did we provide in the last 4 weeks?
+    role: ram
+    expected:
+      status: allowed
+      metric_ids: [hub_volume]
+      time_window_id: last_4_weeks
+      dimension_ids: []
+      data_source_ids: [hub_dispense]
+
+  - id: exec_monthly_equivalents
+    question: Show monthly equivalents for the last 6 months.
+    role: exec
+    expected:
+      status: allowed
+      metric_ids: [equivalents]
+      time_window_id: rolling_6_months
+      dimension_ids: [month]
+      data_source_ids: [distributor]
+
+  - id: default_sales_assumptions
+    question: Show our sales.
+    role: ram
+    expected:
+      status: allowed
+      metric_ids: [paid_demand]
+      time_window_id: r3m
+      dimension_ids: []
+      data_source_ids: [distributor]

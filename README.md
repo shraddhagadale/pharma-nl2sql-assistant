@@ -65,6 +65,21 @@ The API is available at `http://localhost:8000`, with interactive documentation
 at `http://localhost:8000/docs`. See [docs/backend.md](docs/backend.md) for its
 routes, security boundaries, tests, and local workflow.
 
+## Domain catalog
+
+Phase 6 adds a deterministic, provenance-checked catalog of pharmaceutical
+metrics, time windows, dimensions, data sources, and security rules. Validate
+it independently with:
+
+```bash
+./scripts/validate_domain_catalog.py
+```
+
+The supplied Markdown files remain authoritative. See
+[docs/domain_catalog.md](docs/domain_catalog.md) for the review and provenance
+workflow and [domain/golden_examples.yaml](domain/golden_examples.yaml) for the
+initial business-language examples.
+
 ## Full synthetic dataset
 
 Generate and load the full dataset into a separate `pharma_full` database:
@@ -87,7 +102,7 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Phase 5 — role-scoped FastAPI backend.
+Phase 6 — deterministic, catalog-backed business rules.
 
 ## Source material
 
