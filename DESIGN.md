@@ -75,7 +75,7 @@ RLS policies apply to organizations and sales-derived access paths:
 - `director`: rows whose ZIP maps to the user's assigned region
 - `ram`: rows whose ZIP maps to the user's assigned territory
 
-The executor sets `app.user_id` with transaction-local scope. Policies resolve role and assignments from the `users` table. Application roles will not own protected tables, will not receive `BYPASSRLS`, and protected tables will use `FORCE ROW LEVEL SECURITY`.
+The executor sets `app.user_id` with transaction-local scope. Policies resolve role and assignments from the `users` table. Application roles will not own protected tables, will not receive `BYPASSRLS`, and protected tables will use `FORCE ROW LEVEL SECURITY`. At query time, a security-definer function materializes the user's allowed organization IDs as a set; both organization and sales policies reuse that set instead of performing a lookup for every fact row.
 
 Reference tables such as products and ZIP-to-territory mappings may be readable to all application roles, but fact and organization rows remain scoped.
 

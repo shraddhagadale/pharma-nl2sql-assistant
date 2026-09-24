@@ -17,6 +17,8 @@ services:
       - ./schema/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
       - ./schema/seed_data.sql:/docker-entrypoint-initdb.d/002_seed_data.sql:ro
       - ./schema/migrations/003_security.sql:/docker-entrypoint-initdb.d/003_security.sql:ro
+      - ./schema/migrations/004_optimize_rls.sql:/docker-entrypoint-initdb.d/004_optimize_rls.sql:ro
+      - ./schema/generated:/data:ro
 
 volumes:
   postgres_data:

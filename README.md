@@ -48,9 +48,23 @@ Stop the database without deleting its data:
 docker compose down
 ```
 
+## Full synthetic dataset
+
+Generate and load the full dataset into a separate `pharma_full` database:
+
+```bash
+python3 schema/generate_data.py
+./scripts/load_full_data.sh
+./scripts/full_data_quality.sh
+POSTGRES_DB=pharma_full ./scripts/security_smoke_test.sh
+./scripts/performance_smoke_test.sh
+```
+
+The generated CSVs are ignored by Git. The loader refuses to write into an already initialized target database; choose another `FULL_POSTGRES_DB` name when a clean reload is required.
+
 ## Current status
 
-Phase 2 — PostgreSQL RLS and role-based WAC protection.
+Phase 3 — full-data loading and performance validation.
 
 ## Source material
 
