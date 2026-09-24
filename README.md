@@ -17,9 +17,27 @@ This repository has an independent Git history. The original assignment is used 
 
 The complete decisions, assumptions, and trade-offs are in [DESIGN.md](DESIGN.md). The implementation sequence and quality gates are in [docs/implementation_plan.md](docs/implementation_plan.md).
 
+## Local database quick start
+
+Requirements: Docker with Compose.
+
+```bash
+cp .env.example .env
+docker compose up -d --wait
+./scripts/db_smoke_test.sh
+```
+
+The PostgreSQL container applies `schema/migrations/001_initial.sql` and then loads the supplied small fixture from `schema/seed_data.sql` when its data volume is first created.
+
+Stop the database without deleting its data:
+
+```bash
+docker compose down
+```
+
 ## Current status
 
-Phase 0 — project foundation and architecture documentation.
+Phase 1 — local PostgreSQL schema and fixture loading.
 
 ## Source material
 
