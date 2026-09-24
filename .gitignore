@@ -11,6 +11,9 @@ build/
 .DS_Store
 schema/generated/
 
+# Local browser-authenticated AWS CLI session. Never commit these tokens.
+/.aws-local/
+
 # Local source checkout used only as the assignment reference.
 /assignment/
 

@@ -12,9 +12,27 @@ END
 $roles$;
 
 ALTER ROLE pharma_app_limited
-    NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+    NOLOGIN NOCREATEDB NOCREATEROLE NOINHERIT;
 ALTER ROLE pharma_app_exec
-    NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+    NOLOGIN NOCREATEDB NOCREATEROLE NOINHERIT;
+
+-- RDS grants its master user rds_superuser rather than PostgreSQL SUPERUSER,
+-- so it cannot toggle the SUPERUSER or BYPASSRLS bits. Both attributes default
+-- to false on CREATE ROLE; fail closed if pre-existing roles violate that
+-- invariant instead of attempting a privileged ALTER ROLE operation.
+DO $role_safety$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_roles
+        WHERE rolname IN ('pharma_app_limited', 'pharma_app_exec')
+          AND (rolsuper OR rolbypassrls)
+    ) THEN
+        RAISE EXCEPTION
+            'Application roles must not have SUPERUSER or BYPASSRLS';
+    END IF;
+END
+$role_safety$;
 
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON organizations, products, sales, zip_territory, users FROM PUBLIC;
