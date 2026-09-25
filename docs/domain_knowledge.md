@@ -26,7 +26,7 @@ Each approved document is divided into heading-bounded sections. The in-memory
 search index scores normalized query terms using heading matches, section term
 frequency, inverse section frequency, and exact-phrase matches. The corpus is
 small enough that this requires no vector database or external service. The
-backend prefetches the four best sections from the current question and recent
+backend prefetches the six best sections from the current question and recent
 user turns so straightforward requests do not require an extra model/tool
 round trip.
 

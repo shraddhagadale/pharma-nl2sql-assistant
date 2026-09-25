@@ -61,8 +61,9 @@ class DomainKnowledgeRepository:
                 "name": "search_domain_knowledge",
                 "description": (
                     "Search the authoritative pharmaceutical business Markdown documents. "
-                    "Use this before planning SQL to ground metric definitions, time periods, "
-                    "data sources, hierarchy rules, product rules, and access semantics."
+                    "Use this only when the prefetched sections are insufficient for metric "
+                    "definitions, time periods, data sources, hierarchy rules, product rules, "
+                    "or access semantics. Do not repeat a search covered by prefetched content."
                 ),
                 "parameters": {
                     "type": "object",
@@ -88,7 +89,8 @@ class DomainKnowledgeRepository:
                 "name": "read_domain_section",
                 "description": (
                     "Read one exact Markdown section when a search result needs more detail. "
-                    "Use only document and heading values returned by the search tool."
+                    "Use only document and heading values returned by the search tool, and do "
+                    "not reread a section already supplied in prefetched content."
                 ),
                 "parameters": {
                     "type": "object",

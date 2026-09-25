@@ -135,6 +135,10 @@ async def test_provider_uses_markdown_tools_then_structured_output_without_stora
         "search_domain_knowledge",
         "read_domain_section",
     }
+    search_tool = next(
+        tool for tool in responses.calls[0]["tools"] if tool["name"] == "search_domain_knowledge"
+    )
+    assert "prefetched sections are insufficient" in search_tool["description"]
     second_input = responses.calls[1]["input"]
     assert any(
         isinstance(item, dict) and item.get("type") == "function_call_output"
@@ -246,3 +250,4 @@ async def test_provider_can_plan_from_prefetched_markdown_in_one_model_round() -
     content = responses.calls[0]["input"][0]["content"]
     assert evidence.document in content
     assert evidence.heading in content
+    assert "Market Share by Drug" in content

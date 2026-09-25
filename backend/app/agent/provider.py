@@ -24,7 +24,7 @@ from app.agent.prompts import (
 from app.domain.knowledge import DomainKnowledgeError, DomainKnowledgeRepository
 
 MAX_DOMAIN_TOOL_CALLS = 3
-PREFETCHED_DOMAIN_SECTIONS = 4
+PREFETCHED_DOMAIN_SECTIONS = 6
 
 logger = logging.getLogger("pharma.model")
 

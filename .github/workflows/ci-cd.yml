@@ -138,16 +138,7 @@ jobs:
       - name: Run model-backed conversation gate
         env:
           APP_URL: ${{ vars.APP_URL }}
-        run: |
-          for attempt in 1 2; do
-            if python3 scripts/cloud_conversation_smoke_test.py "$APP_URL"; then
-              exit 0
-            fi
-            if [[ "$attempt" -lt 2 ]]; then
-              sleep 20
-            fi
-          done
-          exit 1
+        run: python3 scripts/cloud_conversation_smoke_test.py "$APP_URL"
 
       - name: Record deployment summary
         env:

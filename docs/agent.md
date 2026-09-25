@@ -43,7 +43,7 @@ without pretending that NL-to-SQL inference is available.
 2. The backend supplies the bounded conversation, database-backed user context,
    and role-safe schema to the planning model. A role claimed in chat is never
    authoritative.
-3. The backend deterministically prefetches the four best-matching Markdown
+3. The backend deterministically prefetches the six best-matching Markdown
    sections before the first model call. The model may call
    `search_domain_knowledge` or `read_domain_section` when those sections are
    insufficient. Both tools read only the approved local Markdown corpus.
