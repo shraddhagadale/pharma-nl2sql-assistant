@@ -107,10 +107,11 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Phase 8 complete — the responsive React/TypeScript chat interface, same-origin
-proxy, role-aware user switcher, result rendering, safe error states, and
-diagnostic SQL affordance are implemented. Next: Checkpoint 4, the local product
-gate across representative conversations and roles.
+Checkpoint 4 complete — the local product stack is verified across the React
+UI, same-origin proxy, FastAPI workflow, generated-SQL validation, role-specific
+database pools, and PostgreSQL RLS/WAC controls. See
+[docs/local_product_checkpoint.md](docs/local_product_checkpoint.md). Next:
+Phase 9, durable AWS application deployment.
 
 ## Source material
 
