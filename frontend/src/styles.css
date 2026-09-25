@@ -316,6 +316,7 @@ textarea:disabled {
 }
 
 .workspace-header {
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,6 +373,7 @@ textarea:disabled {
 }
 
 .banner-error {
+  grid-row: 2;
   margin: 16px clamp(24px, 4vw, 58px) 0;
   padding: 11px 14px;
   color: #7a3333;
@@ -382,6 +384,7 @@ textarea:disabled {
 }
 
 .conversation {
+  grid-row: 3;
   min-height: 0;
   overflow-y: auto;
   scrollbar-color: #bdcbc4 transparent;
@@ -724,6 +727,7 @@ textarea:disabled {
 }
 
 .composer-wrap {
+  grid-row: 4;
   padding: 12px clamp(24px, 5vw, 68px) 16px;
   background: linear-gradient(transparent, #f4f6f3 22%);
 }
