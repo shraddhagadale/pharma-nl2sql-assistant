@@ -70,7 +70,8 @@ def ask(
         "conversation": conversation or [],
         "include_sql": include_sql,
     }
-    for attempt in range(2):
+    retry_delays = (3, 8)
+    for attempt in range(3):
         try:
             return request_json(
                 opener,
@@ -78,11 +79,11 @@ def ask(
                 payload=payload,
             )
         except TransientRequestError as error:
-            if attempt == 0:
-                time.sleep(3)
+            if attempt < len(retry_delays):
+                time.sleep(retry_delays[attempt])
                 continue
             raise RuntimeError(
-                f"{question!r}: transient HTTP {error.status_code} after two attempts: "
+                f"{question!r}: transient HTTP {error.status_code} after three attempts: "
                 f"{error}"
             ) from error
     raise AssertionError(f"{question!r}: chat retry loop ended unexpectedly")

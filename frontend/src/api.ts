@@ -62,7 +62,7 @@ export function deleteSession(): Promise<void> {
 
 export async function sendChat(payload: ChatRequest): Promise<ChatResponse> {
   const body = JSON.stringify(payload);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await request<ChatResponse>("/api/v1/chat", {
         method: "POST",
@@ -71,7 +71,7 @@ export async function sendChat(payload: ChatRequest): Promise<ChatResponse> {
     } catch (error) {
       const retryable =
         error instanceof ApiError && [502, 503, 504].includes(error.status);
-      if (!retryable || attempt === 1) throw error;
+      if (!retryable || attempt === 2) throw error;
     }
   }
   throw new Error("The analytics request could not be completed.");

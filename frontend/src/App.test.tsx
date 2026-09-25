@@ -150,7 +150,7 @@ describe("analytics chat", () => {
       }
       if (path.endsWith("/chat")) {
         chatAttempts += 1;
-        if (chatAttempts <= 2) {
+        if (chatAttempts <= 3) {
           return new Response(
             JSON.stringify({ detail: "This analysis is taking longer than expected." }),
             {
@@ -181,10 +181,11 @@ describe("analytics chat", () => {
     expect(await screen.findByText("Paid demand is 1,240 pack units.")).toBeInTheDocument();
 
     const chatCalls = fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/chat"));
-    expect(chatCalls).toHaveLength(3);
+    expect(chatCalls).toHaveLength(4);
     expect(String(chatCalls[1][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
     expect(String(chatCalls[2][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
-    expect(JSON.parse(String(chatCalls[2][1]?.body)).conversation).toEqual([]);
+    expect(String(chatCalls[3][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
+    expect(JSON.parse(String(chatCalls[3][1]?.body)).conversation).toEqual([]);
   });
 
   it("recovers from one transient chat failure before showing an error", async () => {

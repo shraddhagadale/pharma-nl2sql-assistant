@@ -78,9 +78,9 @@ without pretending that NL-to-SQL inference is available.
     55-second proxy deadline. Summarization has its own six-second budget and
     falls back without discarding validated results.
 14. Because analytics chat requests are read-only and idempotent, the web client
-    retries one transient 502, 503, or 504 response with the exact same payload.
-    If both attempts fail, it shows business-safe language and an explicit retry
-    control; failure text is never added to conversation context.
+    retries up to two transient 502, 503, or 504 responses with the exact same
+    payload. If all three attempts fail, it shows business-safe language and an
+    explicit retry control; failure text is never added to conversation context.
 
 The model never receives a generic database execution tool. This avoids a path
 where prompt text could bypass validation or where model-selected credentials
