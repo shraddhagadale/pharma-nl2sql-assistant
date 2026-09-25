@@ -9,8 +9,13 @@ output "app_public_ip" {
 }
 
 output "app_health_url" {
-  description = "Temporary HTTP endpoint for the infrastructure checkpoint."
+  description = "Public application health endpoint."
   value       = "http://${aws_eip.app.public_ip}/health"
+}
+
+output "app_url" {
+  description = "Public HTTP URL for the demo application."
+  value       = "http://${aws_eip.app.public_ip}"
 }
 
 output "rds_address" {
@@ -26,6 +31,11 @@ output "rds_port" {
 output "database_secret_arn" {
   description = "Secrets Manager ARN for the RDS-managed master credential."
   value       = aws_db_instance.postgres.master_user_secret[0].secret_arn
+}
+
+output "app_runtime_secret_arn" {
+  description = "Secrets Manager ARN for application runtime credentials and optional model API key."
+  value       = aws_secretsmanager_secret.app_runtime.arn
 }
 
 output "data_bucket_name" {

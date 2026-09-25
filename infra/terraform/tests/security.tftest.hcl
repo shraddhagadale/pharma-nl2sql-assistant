@@ -121,6 +121,11 @@ run "security_controls" {
   }
 
   assert {
+    condition     = aws_secretsmanager_secret.app_runtime.recovery_window_in_days == 0
+    error_message = "The disposable demo secret should be immediately removable during teardown."
+  }
+
+  assert {
     condition = (
       aws_s3_bucket_public_access_block.data.block_public_acls
       && aws_s3_bucket_public_access_block.data.block_public_policy

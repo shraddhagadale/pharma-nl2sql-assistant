@@ -52,6 +52,17 @@ data "aws_iam_policy_document" "app_runtime" {
     ]
     resources = [aws_db_instance.postgres.master_user_secret[0].secret_arn]
   }
+
+  statement {
+    sid    = "ManageApplicationRuntimeSecret"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:PutSecretValue",
+    ]
+    resources = [aws_secretsmanager_secret.app_runtime.arn]
+  }
 }
 
 resource "aws_iam_policy" "app_runtime" {

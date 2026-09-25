@@ -105,13 +105,18 @@ Terraform for the demo AWS foundation is under `infra/terraform`. It provisions 
 
 See `infra/terraform/README.md` for review, cost, plan, apply, verification, and teardown instructions. Running Terraform locally does not happen automatically and no AWS resources are created merely by cloning this repository.
 
+The deployed synthetic-data demo is available at
+[http://100.28.234.67](http://100.28.234.67). It is intentionally HTTP-only;
+see [docs/deployment.md](docs/deployment.md) for the release workflow, security
+boundaries, live evidence, cost warning, and model-secret limitation.
+
 ## Current status
 
-Checkpoint 4 complete — the local product stack is verified across the React
-UI, same-origin proxy, FastAPI workflow, generated-SQL validation, role-specific
-database pools, and PostgreSQL RLS/WAC controls. See
-[docs/local_product_checkpoint.md](docs/local_product_checkpoint.md). Next:
-Phase 9, durable AWS application deployment.
+Phase 9 complete — the two-container application is deployed on EC2 against the
+complete private RDS dataset, with runtime values in Secrets Manager and a
+verified public same-origin endpoint. Checkpoint 5's deterministic cloud gates
+pass; live remote-model conversations remain configuration-dependent because no
+OpenAI API key was available. Next: Phase 10 evaluation and final polish.
 
 ## Source material
 

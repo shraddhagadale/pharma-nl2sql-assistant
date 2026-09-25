@@ -5,6 +5,7 @@ This Terraform root module creates the Phase 4/Checkpoint 2 AWS foundation:
 - one Amazon Linux 2023 EC2 instance with an Elastic IP
 - one non-public RDS PostgreSQL instance
 - an RDS-managed master password in Secrets Manager
+- a separate application-runtime secret whose value is initialized on EC2
 - one private, encrypted, versioned S3 data-staging bucket
 - one CloudWatch log group and the CloudWatch agent
 - Systems Manager Session Manager access instead of SSH
@@ -53,13 +54,31 @@ curl "$(terraform output -raw app_health_url)"
 
 The expected health response is `ok`. Use the `ssm_instance_id` output with Session Manager for shell access; port 22 is not opened.
 
-The Phase 9 deployment replaces the temporary Nginx page with the application. A trusted HTTPS endpoint requires the final domain/reverse-proxy or load-balancer decision and is intentionally not faked with a self-signed certificate here.
+## Deploy the application
+
+After generating the full CSV dataset, run:
+
+```bash
+./scripts/deploy_aws.sh
+```
+
+The wrapper stages source and data in the private bucket, runs the release over
+Systems Manager, initializes runtime secret values on EC2, loads or verifies the
+full RDS dataset, starts the two application containers, and runs the public
+smoke test. See `docs/deployment.md` for the verified result and recovery notes.
+
+A trusted HTTPS endpoint requires a domain and certificate/reverse-proxy or
+load-balancer decision. The synthetic demo remains HTTP-only and does not fake
+trust with a self-signed certificate.
 
 ## Database access
 
 RDS has no public address. Its security group accepts TCP 5432 only from the EC2 security group. Retrieve the RDS-managed credential from Secrets Manager on the EC2 instance using its IAM role, then run migrations and bulk-load data from EC2/S3.
 
-The initial RDS master credential is only for migrations and database-role bootstrap. The request-serving backend will use the limited and executive application roles introduced by the database security migrations.
+The initial RDS master credential is only for migrations, full-data loading,
+and database-role bootstrap. The request-serving backend uses separate auth,
+limited, and executive runtime logins whose random passwords are held in the
+application-runtime secret.
 
 ## State
 
