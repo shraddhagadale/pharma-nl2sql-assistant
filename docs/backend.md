@@ -55,7 +55,7 @@ docker compose up -d --wait postgres
 docker compose --profile application up -d --build --wait backend
 ```
 
-A new PostgreSQL volume applies migrations `001` through `005` and the local
+A new PostgreSQL volume applies migrations `001` through `006` and the local
 runtime-login initialization automatically. `setup_backend_db.sh` remains safe
 to run for existing volumes and after local passwords change.
 

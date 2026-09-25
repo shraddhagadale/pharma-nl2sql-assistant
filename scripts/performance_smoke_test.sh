@@ -10,6 +10,68 @@ docker compose exec -T postgres psql \
   --set ON_ERROR_STOP=1 \
   --tuples-only \
   --command "
+    DO \$quality\$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class AS index_relation
+        JOIN pg_index AS index_metadata
+          ON index_metadata.indexrelid = index_relation.oid
+        WHERE index_relation.relname = 'sales_week_source_brand_org_cover_idx'
+          AND index_relation.relnamespace = 'public'::regnamespace
+          AND index_metadata.indisready
+          AND index_metadata.indisvalid
+      ) THEN
+        RAISE EXCEPTION 'weekly sales covering index is missing or invalid';
+      END IF;
+    END
+    \$quality\$;
+
+    BEGIN;
+    SET LOCAL ROLE pharma_app_limited;
+    SET LOCAL app.user_id = 'U009';
+    SET LOCAL statement_timeout = '5s';
+    SELECT COALESCE(sum(pack_units), 0)
+    FROM sales
+    WHERE data_source = 'hub_dispense'
+      AND brand_flag = 1
+      AND wk_offset = 0;
+    ROLLBACK;
+
+    BEGIN;
+    SET LOCAL ROLE pharma_app_limited;
+    SET LOCAL app.user_id = 'U005';
+    SET LOCAL statement_timeout = '5s';
+    SELECT round(COALESCE(sum(s.pack_units * p.unit_conversion_factor), 0), 3)
+    FROM sales AS s
+    JOIN products AS p ON p.ndc = s.ndc
+    WHERE s.data_source = 'hub_dispense'
+      AND s.brand_flag = 1
+      AND s.wk_offset = 0;
+    ROLLBACK;
+
+    BEGIN;
+    SET LOCAL ROLE pharma_app_exec;
+    SET LOCAL app.user_id = 'U001';
+    SET LOCAL statement_timeout = '5s';
+    SELECT COALESCE(sum(pack_units), 0)
+    FROM sales
+    WHERE data_source = 'distributor'
+      AND brand_flag = 1
+      AND wk_offset = 0;
+    ROLLBACK;
+
+    BEGIN;
+    SET LOCAL ROLE pharma_app_exec;
+    SET LOCAL app.user_id = 'U001';
+    SET LOCAL statement_timeout = '5s';
+    SELECT round(COALESCE(sum(s.pack_units * p.unit_conversion_factor), 0), 3)
+    FROM sales AS s
+    JOIN products AS p ON p.ndc = s.ndc
+    WHERE s.data_source = 'market_data'
+      AND s.wk_offset IN (0, 1, 2, 3);
+    ROLLBACK;
+
     BEGIN;
     SET LOCAL ROLE pharma_app_exec;
     SET LOCAL app.user_id = 'U001';
@@ -68,4 +130,4 @@ docker compose exec -T postgres psql \
     ROLLBACK;
   " >/dev/null
 
-echo "Performance smoke test passed: representative full-data queries completed within 5 seconds each."
+echo "Performance smoke test passed: weekly and monthly full-data queries completed within 5 seconds each."

@@ -7,6 +7,7 @@ project_dir="$(dirname "$script_dir")"
 cd "$project_dir"
 
 ./scripts/apply_local_migration.sh schema/migrations/005_runtime_access.sql
+./scripts/apply_local_migration.sh schema/migrations/006_weekly_sales_covering_index.sql
 ./scripts/bootstrap_runtime_roles.sh
 
 echo "Backend database roles are ready."

@@ -97,6 +97,11 @@ docker compose exec -T postgres psql \
 docker compose exec -T postgres psql \
   --username "$db_user" \
   --dbname "$full_db" \
+  --set ON_ERROR_STOP=1 < schema/migrations/006_weekly_sales_covering_index.sql
+
+docker compose exec -T postgres psql \
+  --username "$db_user" \
+  --dbname "$full_db" \
   --set ON_ERROR_STOP=1 \
   --command "ANALYZE;"
 

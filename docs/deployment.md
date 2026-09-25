@@ -49,7 +49,7 @@ remote workflow:
 
 1. verifies all four dataset SHA-256 hashes;
 2. loads the full dataset transactionally when exact counts are absent;
-3. reapplies RLS, grants, and runtime-access migrations;
+3. reapplies RLS, grants, runtime-access, and performance migrations;
 4. verifies 40,000 organizations, 40 products, 29,728 ZIP mappings, 2,000,000
    sales rows, and 23 users;
 5. creates or reuses runtime credentials in Secrets Manager;

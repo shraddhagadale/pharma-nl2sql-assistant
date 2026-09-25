@@ -79,7 +79,12 @@ SQL
     rm -f "$load_script"
 fi
 
-for migration in 003_security.sql 004_optimize_rls.sql 005_runtime_access.sql; do
+for migration in \
+    003_security.sql \
+    004_optimize_rls.sql \
+    005_runtime_access.sql \
+    006_weekly_sales_covering_index.sql
+do
     psql "$admin_connection" --set ON_ERROR_STOP=1 \
         --file "$source_dir/schema/migrations/$migration" >/dev/null
 done
@@ -102,6 +107,18 @@ BEGIN
   END IF;
   IF (SELECT count(*) FROM users) <> 23 THEN
     RAISE EXCEPTION 'expected 23 users';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_class AS index_relation
+    JOIN pg_index AS index_metadata
+      ON index_metadata.indexrelid = index_relation.oid
+    WHERE index_relation.relname = 'sales_week_source_brand_org_cover_idx'
+      AND index_relation.relnamespace = 'public'::regnamespace
+      AND index_metadata.indisready
+      AND index_metadata.indisvalid
+  ) THEN
+    RAISE EXCEPTION 'weekly sales covering index is missing or invalid';
   END IF;
 END
 $quality$;

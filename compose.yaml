@@ -22,7 +22,8 @@ services:
       - ./schema/migrations/003_security.sql:/docker-entrypoint-initdb.d/003_security.sql:ro
       - ./schema/migrations/004_optimize_rls.sql:/docker-entrypoint-initdb.d/004_optimize_rls.sql:ro
       - ./schema/migrations/005_runtime_access.sql:/docker-entrypoint-initdb.d/005_runtime_access.sql:ro
-      - ./schema/init/006_runtime_logins.sh:/docker-entrypoint-initdb.d/006_runtime_logins.sh:ro
+      - ./schema/migrations/006_weekly_sales_covering_index.sql:/docker-entrypoint-initdb.d/006_weekly_sales_covering_index.sql:ro
+      - ./schema/init/006_runtime_logins.sh:/docker-entrypoint-initdb.d/007_runtime_logins.sh:ro
       - ./schema/generated:/data:ro
 
   backend:

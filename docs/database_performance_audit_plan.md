@@ -121,3 +121,23 @@ Apply one reversible migration or query change at a time. After each change:
 - decision records for any partitioning, statistics, pre-aggregation, or RDS changes;
 - reversible migrations and updated performance regression tests;
 - final cloud p50/p95/timeout report.
+
+## Weekly-query checkpoint — 2026-09-25
+
+An isolated two-million-row benchmark compared a general covering index with a
+smaller free-drug-only partial index. The general candidate was selected because
+it accelerated every measured weekly query shape across RAM, director, and
+executive scopes, while the partial candidate left paid-demand and market-volume
+queries slow.
+
+The selected index is `(data_source, wk_offset, brand_flag, org_id) INCLUDE
+(pack_units, total_mg, ndc)`. All measured weekly warm-cache p95 times were below
+134 ms after the change, compared with 23–25 seconds for the original weekly
+free-drug query. Monthly queries retained their existing plan and stayed below
+177 ms p95. Results were identical before and after each candidate.
+
+The index adds approximately 147 MiB to the two-million-row dataset. It is
+implemented as an online, reversible migration and guarded by schema-readiness,
+role-scope, and five-second full-data performance checks. Production-like RDS
+latency remains a separate post-deployment checkpoint; a local benchmark does
+not by itself prove the cloud result.
