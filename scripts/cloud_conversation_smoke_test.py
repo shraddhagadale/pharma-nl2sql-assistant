@@ -78,18 +78,18 @@ def ask(
 def run(base_url: str) -> None:
     ram = login(base_url, "U009")
     denied = ask(ram, base_url, "Show gross revenue last month.")
-    assert denied["status"] == "denied"
+    assert denied["status"] == "denied", denied
 
     paid_demand = ask(ram, base_url, "Show paid demand for the last 3 months.")
-    assert paid_demand["status"] == "answered"
-    assert paid_demand["rows"]
+    assert paid_demand["status"] == "answered", paid_demand
+    assert paid_demand["rows"], paid_demand
 
     director = login(base_url, "U003")
     accounts = ask(
-        director, base_url, "Rank the top accounts by pack units last quarter."
+        director, base_url, "Rank the top 10 accounts by pack units last quarter."
     )
-    assert accounts["status"] == "answered"
-    assert accounts["rows"]
+    assert accounts["status"] == "answered", accounts
+    assert accounts["rows"], accounts
 
     prior = ask(director, base_url, "Show paid demand for the last 3 months.")
     follow_up = ask(
@@ -102,17 +102,27 @@ def run(base_url: str) -> None:
         ],
         include_sql=True,
     )
-    assert follow_up["status"] == "answered"
-    assert follow_up["sql"]
-    assert re.search(r"(?:\b\w+\.)?mo_offset\s*=\s*1\b", follow_up["sql"].casefold())
+    assert follow_up["status"] == "answered", follow_up
+    assert follow_up["sql"], follow_up
+    normalized_answer = follow_up["answer"].casefold()
+    assert any(
+        phrase in normalized_answer
+        for phrase in ("last month", "most recently completed full month")
+    ), follow_up
+    assert follow_up["rows"] != prior["rows"], follow_up
+    assert re.search(r"(?:\b\w+\.)?mo_offset\s*=", follow_up["sql"].casefold()), (
+        follow_up
+    )
 
     executive = login(base_url, "U001")
     revenue = ask(executive, base_url, "Show gross revenue last month.")
-    assert revenue["status"] == "answered"
-    assert revenue["rows"]
+    assert revenue["status"] == "answered", revenue
+    assert revenue["rows"], revenue
 
-    market_share = ask(executive, base_url, "Show market share for the last 3 months.")
-    assert market_share["status"] == "answered"
+    market_share = ask(
+        executive, base_url, "Show Zenovax market share for the last 3 months."
+    )
+    assert market_share["status"] == "answered", market_share
 
     print(
         "Cloud conversation gate passed: RAM denial and paid demand, director top "

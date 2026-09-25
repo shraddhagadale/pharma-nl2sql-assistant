@@ -70,14 +70,16 @@ The script verifies:
 
 - RAM revenue denial without allowing WAC SQL to execute;
 - RAM paid demand;
-- director top accounts;
+- director top-10 accounts;
 - a bounded marker-free multi-turn period follow-up with SQL semantics checked;
 - executive gross revenue; and
-- market share with safe zero-denominator handling.
+- product-specific market share with safe zero-denominator handling.
 
-The previous live run exposed incorrect follow-up inheritance and silent
-three-month defaults. The updated Markdown-grounded planner must be redeployed
-and the live gate rerun before this release is reported as passed.
+The gate passed against the AWS deployment on 2026-09-25. The marker-free
+follow-up replaced the prior rolling-three-month result with the most recently
+completed full month and produced an equality predicate on `mo_offset`. During
+the gate, underspecified top-account and market-share questions correctly
+returned business-language clarifications instead of inventing missing scope.
 
 ## Known limitations
 
