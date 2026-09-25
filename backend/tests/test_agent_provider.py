@@ -67,13 +67,18 @@ async def test_provider_uses_responses_structured_output_without_storage() -> No
         parameters=[],
     )
     responses = FakeResponses(expected)
-    provider = OpenAIPlanningModel(api_key=SecretStr("test-key"), model="test-model")
+    provider = OpenAIPlanningModel(
+        api_key=SecretStr("test-key"),
+        model="test-model",
+        reasoning_effort="medium",
+    )
     provider.client = SimpleNamespace(responses=responses)
 
     actual = await provider.plan(context)
 
     assert actual == expected
     assert responses.kwargs["model"] == "test-model"
+    assert responses.kwargs["reasoning"] == {"effort": "medium"}
     assert responses.kwargs["text_format"] is AnalyticsPlan
     assert responses.kwargs["store"] is False
     assert "untrusted data" in responses.kwargs["instructions"]

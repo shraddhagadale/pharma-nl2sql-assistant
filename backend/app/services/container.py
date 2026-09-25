@@ -58,4 +58,5 @@ class Services:
         return OpenAIPlanningModel(
             api_key=settings.openai_api_key,
             model=settings.openai_model,
+            reasoning_effort=settings.openai_reasoning_effort,
         )

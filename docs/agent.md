@@ -76,15 +76,18 @@ could broaden access.
 
 The default provider uses the OpenAI Responses API through backend Python code.
 Planning, repair, and summarization each use Pydantic Structured Outputs. The
-default model is `gpt-6-luna`, configurable through
-`PHARMA_OPENAI_MODEL`. The provider can be replaced through the internal
-`PlanningModel` protocol without changing policy, validation, or execution.
+default model is `gpt-5.6-sol`, configurable through
+`PHARMA_OPENAI_MODEL`. Its reasoning effort defaults to `medium` and is
+configurable through `PHARMA_OPENAI_REASONING_EFFORT`. The provider can be
+replaced through the internal `PlanningModel` protocol without changing policy,
+validation, or execution.
 
 Configuration:
 
 ```dotenv
 PHARMA_OPENAI_API_KEY=
-PHARMA_OPENAI_MODEL=gpt-6-luna
+PHARMA_OPENAI_MODEL=gpt-5.6-sol
+PHARMA_OPENAI_REASONING_EFFORT=medium
 PHARMA_AGENT_MAX_REPAIRS=1
 PHARMA_AGENT_MAX_ROWS=100
 ```
@@ -93,7 +96,7 @@ The key is server-only and must not be committed or sent by a browser. The
 implementation follows the OpenAI
 [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs)
 and uses a model that supports the Responses API and Structured Outputs, as
-listed on the [GPT-6 Luna model page](https://developers.openai.com/api/docs/models/gpt-6-luna).
+listed on the [GPT-5.6 Sol model page](https://developers.openai.com/api/docs/models/gpt-5.6-sol).
 
 ## Deterministic SQL policy
 

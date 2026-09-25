@@ -35,7 +35,7 @@ More detailed component boundaries are documented in `docs/architecture.md`.
 - **Backend:** Python and FastAPI for typed request handling, strong data/LLM library support, and straightforward async I/O.
 - **Database access:** SQLAlchemy with PostgreSQL driver support. Raw generated analytics SQL is executed through a narrowly scoped executor rather than the ORM.
 - **Validation:** `sqlglot` parses SQL into an AST so policy checks operate on structure, not fragile regular expressions.
-- **LLM integration:** the backend calls the OpenAI Responses API and parses Pydantic Structured Outputs. `gpt-6-luna` is the configurable demo default. The model produces structured plans and candidate SQL; it never receives database credentials or direct network access to PostgreSQL.
+- **LLM integration:** the backend calls the OpenAI Responses API and parses Pydantic Structured Outputs. `gpt-5.6-sol` with `medium` reasoning is the configurable demo default. The model produces structured plans and candidate SQL; it never receives database credentials or direct network access to PostgreSQL.
 - **Agent orchestration:** a small explicit Python state machine first. A graph framework can be introduced only if branching, retries, or observability become complex enough to justify it.
 
 ### Data and infrastructure

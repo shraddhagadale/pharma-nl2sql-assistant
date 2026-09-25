@@ -58,13 +58,14 @@ class UnavailablePlanningModel:
 
 
 class OpenAIPlanningModel:
-    def __init__(self, *, api_key: SecretStr, model: str) -> None:
+    def __init__(self, *, api_key: SecretStr, model: str, reasoning_effort: str) -> None:
         self.client = AsyncOpenAI(
             api_key=api_key.get_secret_value(),
             timeout=30.0,
             max_retries=1,
         )
         self.model = model
+        self.reasoning_effort = reasoning_effort
 
     async def plan(self, context: PlanningContext) -> AnalyticsPlan:
         return await self._parse(
@@ -104,7 +105,7 @@ class OpenAIPlanningModel:
                 instructions=instructions,
                 input=content,
                 text_format=output_type,
-                reasoning={"effort": "low"},
+                reasoning={"effort": self.reasoning_effort},
                 max_output_tokens=4_000,
                 store=False,
             )
