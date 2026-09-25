@@ -127,3 +127,43 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "github_repository_owner" {
+  description = "GitHub owner name included in the Actions OIDC subject."
+  type        = string
+  default     = "shraddhagadale"
+}
+
+variable "github_repository_owner_id" {
+  description = "Immutable GitHub owner ID included in the Actions OIDC subject."
+  type        = string
+  default     = "62941237"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_owner_id))
+    error_message = "github_repository_owner_id must contain only digits."
+  }
+}
+
+variable "github_repository" {
+  description = "GitHub repository name allowed to assume the deployment role."
+  type        = string
+  default     = "pharma-nl2sql-assistant"
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID included in the Actions OIDC subject."
+  type        = string
+  default     = "1384826916"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must contain only digits."
+  }
+}
+
+variable "github_environment" {
+  description = "GitHub environment whose jobs may assume the deployment role."
+  type        = string
+  default     = "demo"
+}

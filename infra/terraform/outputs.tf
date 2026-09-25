@@ -52,3 +52,8 @@ output "ssm_instance_id" {
   description = "EC2 instance ID to use with Systems Manager Session Manager."
   value       = aws_instance.app.id
 }
+
+output "github_actions_deploy_role_arn" {
+  description = "OIDC role assumed by the demo GitHub Actions deployment job."
+  value       = aws_iam_role.github_deploy.arn
+}

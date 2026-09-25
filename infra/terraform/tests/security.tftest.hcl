@@ -54,6 +54,26 @@ mock_provider "aws" {
   }
 
   override_data {
+    target          = data.aws_iam_policy_document.github_deploy_assume_role
+    override_during = plan
+    values = {
+      json = <<-JSON
+        {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"sts:AssumeRoleWithWebIdentity","Principal":{"Federated":"arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"},"Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com","token.actions.githubusercontent.com:sub":"repo:shraddhagadale@62941237/pharma-nl2sql-assistant@1384826916:environment:demo"}}}]}
+      JSON
+    }
+  }
+
+  override_data {
+    target          = data.aws_iam_policy_document.github_deploy
+    override_during = plan
+    values = {
+      json = <<-JSON
+        {"Version":"2012-10-17","Statement":[]}
+      JSON
+    }
+  }
+
+  override_data {
     target          = data.aws_iam_policy_document.app_runtime
     override_during = plan
     values = {
@@ -133,6 +153,16 @@ run "security_controls" {
       && aws_s3_bucket_public_access_block.data.restrict_public_buckets
     )
     error_message = "Every S3 public-access-block control must be enabled."
+  }
+
+  assert {
+    condition     = aws_iam_openid_connect_provider.github_actions.client_id_list == toset(["sts.amazonaws.com"])
+    error_message = "The GitHub OIDC provider must only accept the AWS STS audience."
+  }
+
+  assert {
+    condition     = local.github_oidc_subject == "repo:shraddhagadale@62941237/pharma-nl2sql-assistant@1384826916:environment:demo"
+    error_message = "The deployment role trust must bind to the immutable repository IDs and demo environment."
   }
 
 }

@@ -9,6 +9,7 @@ This Terraform root module creates the Phase 4/Checkpoint 2 AWS foundation:
 - one private, encrypted, versioned S3 data-staging bucket
 - one CloudWatch log group and the CloudWatch agent
 - Systems Manager Session Manager access instead of SSH
+- a GitHub Actions OIDC provider and environment-scoped deployment role
 - security groups allowing PostgreSQL only from the EC2 application group
 
 It intentionally uses the selected region's default VPC and default subnets. It does not create a custom VPC, NAT gateway, bastion host, or VPC endpoints.
@@ -66,6 +67,17 @@ The wrapper stages source and data in the private bucket, runs the release over
 Systems Manager, initializes runtime secret values on EC2, loads or verifies the
 full RDS dataset, starts the two application containers, and runs the public
 smoke test. See `docs/deployment.md` for the verified result and recovery notes.
+
+After the one-time full-data deployment, pushes to `main` use
+`.github/workflows/ci-cd.yml`. The deployment job obtains short-lived AWS
+credentials through GitHub OIDC, uploads an immutable source archive under the
+commit SHA, and invokes the same EC2 deployment logic through Systems Manager.
+The GitHub role cannot read Secrets Manager or change Terraform resources.
+
+The role trust is restricted to the repository's immutable GitHub owner and
+repository IDs and to the `demo` GitHub environment. If this repository is
+recreated instead of renamed, update the IDs in `variables.tf` and apply the
+reviewed Terraform plan before enabling deployment from the replacement repo.
 
 A trusted HTTPS endpoint requires a domain and certificate/reverse-proxy or
 load-balancer decision. The synthetic demo remains HTTP-only and does not fake
