@@ -64,10 +64,12 @@ export async function sendChat(payload: ChatRequest): Promise<ChatResponse> {
   const body = JSON.stringify(payload);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await request<ChatResponse>("/api/v1/chat", {
+      const response = await request<ChatResponse>("/api/v1/chat", {
         method: "POST",
         body
       });
+      if (response.status === "rejected" && attempt < 2) continue;
+      return response;
     } catch (error) {
       const retryable =
         error instanceof ApiError && [502, 503, 504].includes(error.status);

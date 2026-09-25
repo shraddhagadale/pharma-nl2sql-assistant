@@ -75,11 +75,15 @@ def ask(
     retry_delays = (3, 8)
     for attempt in range(3):
         try:
-            return request_json(
+            response = request_json(
                 opener,
                 f"{base_url}/api/v1/chat",
                 payload=payload,
             )
+            if response.get("status") == "rejected" and attempt < len(retry_delays):
+                time.sleep(retry_delays[attempt])
+                continue
+            return response
         except TransientRequestError as error:
             if attempt < len(retry_delays):
                 time.sleep(retry_delays[attempt])

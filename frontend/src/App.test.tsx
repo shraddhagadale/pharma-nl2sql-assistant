@@ -219,4 +219,43 @@ describe("analytics chat", () => {
     expect(chatCalls).toHaveLength(2);
     expect(String(chatCalls[1][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
   });
+
+  it("retries a validator-rejected plan without weakening the validator", async () => {
+    let chatAttempts = 0;
+    const rejected: ChatResponse = {
+      status: "rejected",
+      answer: "I couldn't complete that analysis as asked. Please rephrase it.",
+      columns: [],
+      rows: [],
+      assumptions: [],
+      sql: null,
+      request_id: "rejected-plan-1"
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path.endsWith("/demo/users")) return jsonResponse([ram]);
+      if (path.endsWith("/demo/session") && (!init?.method || init.method === "GET")) {
+        return jsonResponse({ detail: "Not authenticated" }, 401);
+      }
+      if (path.endsWith("/demo/session") && init?.method === "POST") {
+        return jsonResponse(ram);
+      }
+      if (path.endsWith("/chat")) {
+        chatAttempts += 1;
+        return jsonResponse(chatAttempts === 1 ? rejected : answer);
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText("View as"), { target: { value: "U009" } });
+    await screen.findByText("New York Metro");
+    fireEvent.click(screen.getByRole("button", { name: /show paid demand for the last 3 months/i }));
+
+    expect(await screen.findByText("Paid demand is 1,240 pack units.")).toBeInTheDocument();
+    expect(screen.queryByText(/rephrase it/i)).not.toBeInTheDocument();
+    const chatCalls = fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/chat"));
+    expect(chatCalls).toHaveLength(2);
+    expect(String(chatCalls[1][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
+  });
 });

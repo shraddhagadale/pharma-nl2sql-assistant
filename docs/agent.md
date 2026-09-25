@@ -79,8 +79,10 @@ without pretending that NL-to-SQL inference is available.
     falls back without discarding validated results.
 14. Because analytics chat requests are read-only and idempotent, the web client
     retries up to two transient 502, 503, or 504 responses with the exact same
-    payload. If all three attempts fail, it shows business-safe language and an
-    explicit retry control; failure text is never added to conversation context.
+    payload. A validator-rejected generated plan is retried the same way, while
+    access denials and genuine clarifications are never retried. If all three
+    attempts fail, the client shows business-safe language and an explicit retry
+    control; failure text is never added to conversation context.
 
 The model never receives a generic database execution tool. This avoids a path
 where prompt text could bypass validation or where model-selected credentials

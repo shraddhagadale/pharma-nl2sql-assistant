@@ -46,7 +46,7 @@ document set, retrieval, exact-section reads, digests, and path boundaries.
 - Backend: **65 tests passed**, including real local PostgreSQL product-flow
   tests across RAM, director, and executive identities plus generalized
   conversation-outcome and geography-scope coverage.
-- Frontend: type checking and linting passed; **5 component tests passed**; the
+- Frontend: type checking and linting passed; **6 component tests passed**; the
   production Vite build passed.
 - Local containers: database fixture, RLS/WAC security, same-origin frontend,
   CSP headers, sessions, and access-limited response smoke tests passed.
