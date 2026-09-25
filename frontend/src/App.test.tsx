@@ -70,7 +70,6 @@ describe("analytics chat", () => {
     expect(await screen.findByText("New York Metro")).toBeInTheDocument();
     expect(screen.getByText("Restricted")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("switch", { name: "Diagnostic SQL" }));
     const input = screen.getByLabelText("Ask a pharmaceutical sales question");
     fireEvent.change(input, { target: { value: "Show Zenovax paid demand" } });
     fireEvent.click(screen.getByRole("button", { name: "Send question" }));
@@ -79,14 +78,17 @@ describe("analytics chat", () => {
     expect(screen.getByRole("columnheader", { name: "Drug Name" })).toBeInTheDocument();
     expect(screen.getByText("ZENOVAX")).toBeInTheDocument();
     expect(screen.getByText("1,240")).toBeInTheDocument();
-    expect(screen.getByText("Validated SQL")).toBeInTheDocument();
+    expect(screen.queryByText(/scope and assumptions/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/request 12345678/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Validated SQL")).not.toBeInTheDocument();
+    expect(screen.queryByText("Diagnostic SQL")).not.toBeInTheDocument();
 
     const chatCall = fetchMock.mock.calls.find(([path]) => String(path).endsWith("/chat"));
     expect(chatCall).toBeDefined();
     expect(JSON.parse(String(chatCall?.[1]?.body))).toMatchObject({
       question: "Show Zenovax paid demand",
       conversation: [],
-      include_sql: true
+      include_sql: false
     });
   });
 

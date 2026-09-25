@@ -63,7 +63,6 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<UserContext | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
-  const [diagnosticSql, setDiagnosticSql] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [selectingUser, setSelectingUser] = useState(false);
   const [sending, setSending] = useState(false);
@@ -129,7 +128,7 @@ export function App() {
       const response = await sendChat({
         question: content,
         conversation: priorConversation,
-        include_sql: diagnosticSql
+        include_sql: false
       });
       setMessages((current) => [
         ...current,
@@ -161,9 +160,7 @@ export function App() {
         users={users}
         currentUser={currentUser}
         disabled={initializing || selectingUser || sending}
-        diagnosticSql={diagnosticSql}
         onSelect={(userId) => void selectUser(userId)}
-        onDiagnosticChange={setDiagnosticSql}
       />
 
       <main className="workspace">

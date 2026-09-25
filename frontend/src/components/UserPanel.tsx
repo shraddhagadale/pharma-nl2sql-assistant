@@ -10,9 +10,7 @@ interface UserPanelProps {
   users: UserContext[];
   currentUser: UserContext | null;
   disabled: boolean;
-  diagnosticSql: boolean;
   onSelect: (userId: string) => void;
-  onDiagnosticChange: (enabled: boolean) => void;
 }
 
 function scopeLabel(user: UserContext): string {
@@ -25,9 +23,7 @@ export function UserPanel({
   users,
   currentUser,
   disabled,
-  diagnosticSql,
-  onSelect,
-  onDiagnosticChange
+  onSelect
 }: UserPanelProps) {
   const groupedUsers = (["ram", "director", "exec"] as const).map((role) => ({
     role,
@@ -108,20 +104,6 @@ export function UserPanel({
           Choose a user to apply their role and assigned business area.
         </div>
       )}
-
-      <div className="diagnostic-control">
-        <div>
-          <label htmlFor="diagnostic-sql">Diagnostic SQL</label>
-          <p>Show technical SQL details with new answers.</p>
-        </div>
-        <input
-          id="diagnostic-sql"
-          type="checkbox"
-          role="switch"
-          checked={diagnosticSql}
-          onChange={(event) => onDiagnosticChange(event.target.checked)}
-        />
-      </div>
 
       <div className="security-note">
         <span aria-hidden="true">◆</span>

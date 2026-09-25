@@ -27,13 +27,13 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
 }
 
 body {
   min-width: 320px;
-  min-height: 100vh;
+  overflow: hidden;
 }
 
 button,
@@ -44,8 +44,7 @@ input {
 }
 
 button,
-select,
-input[type="checkbox"] {
+select {
   cursor: pointer;
 }
 
@@ -71,7 +70,7 @@ textarea:disabled {
 .app-shell {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
   background:
     radial-gradient(circle at 90% 5%, rgb(190 210 194 / 28%), transparent 29rem),
     #f4f6f3;
@@ -85,7 +84,7 @@ textarea:disabled {
   gap: 24px;
   height: 100vh;
   padding: 28px 24px 22px;
-  overflow-y: auto;
+  overflow: hidden;
   color: #eef6f1;
   background:
     linear-gradient(150deg, rgb(255 255 255 / 4%), transparent 32%),
@@ -134,7 +133,6 @@ textarea:disabled {
 
 .brand p,
 .demo-notice p,
-.diagnostic-control p,
 .security-note p {
   margin: 0;
 }
@@ -186,8 +184,7 @@ textarea:disabled {
   box-shadow: 0 0 0 4px rgb(101 201 142 / 13%);
 }
 
-.control-group label,
-.diagnostic-control label {
+.control-group label {
   display: block;
   margin-bottom: 8px;
   color: #a9beb6;
@@ -212,11 +209,9 @@ textarea:disabled {
 }
 
 .control-group select:focus-visible,
-.diagnostic-control input:focus-visible,
 .suggestion-card:focus-visible,
 .composer textarea:focus-visible,
-.send-button:focus-visible,
-summary:focus-visible {
+.send-button:focus-visible {
   outline: 3px solid rgb(75 166 136 / 32%);
   outline-offset: 2px;
 }
@@ -295,58 +290,6 @@ summary:focus-visible {
   border-radius: 14px;
   font-size: 12px;
   line-height: 1.55;
-}
-
-.diagnostic-control {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding-top: 2px;
-}
-
-.diagnostic-control label {
-  margin-bottom: 3px;
-  color: #d9e7e1;
-}
-
-.diagnostic-control p {
-  color: #829c92;
-  font-size: 10px;
-}
-
-.diagnostic-control input {
-  position: relative;
-  flex: 0 0 auto;
-  width: 38px;
-  height: 21px;
-  margin: 0;
-  appearance: none;
-  background: #39544c;
-  border: 0;
-  border-radius: 999px;
-  transition: background 160ms ease;
-}
-
-.diagnostic-control input::after {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 15px;
-  height: 15px;
-  content: "";
-  background: #c6d5cf;
-  border-radius: 50%;
-  transition: transform 160ms ease;
-}
-
-.diagnostic-control input:checked {
-  background: #4d9b7f;
-}
-
-.diagnostic-control input:checked::after {
-  background: white;
-  transform: translateX(17px);
 }
 
 .security-note {
@@ -754,47 +697,6 @@ summary:focus-visible {
   background: #fafcfb;
 }
 
-.answer-details {
-  margin-top: 13px;
-  padding-top: 11px;
-  border-top: 1px solid #e6ece8;
-}
-
-.answer-details summary {
-  width: fit-content;
-  color: #567067;
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 750;
-}
-
-.answer-details ul {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  color: #66746f;
-  font-size: 10px;
-  line-height: 1.55;
-}
-
-.sql-details pre {
-  max-height: 280px;
-  margin: 10px 0 0;
-  padding: 13px;
-  overflow: auto;
-  color: #d9eee4;
-  background: #172b25;
-  border-radius: 8px;
-  font: 10px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  white-space: pre-wrap;
-}
-
-.request-id {
-  display: block;
-  margin-top: 12px;
-  color: #9aa6a2;
-  font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .thinking {
   display: flex;
   align-items: center;
@@ -894,8 +796,14 @@ summary:focus-visible {
 }
 
 @media (max-width: 820px) {
+  body {
+    overflow-y: auto;
+  }
+
   .app-shell {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
   }
 
   .user-panel {
@@ -911,8 +819,7 @@ summary:focus-visible {
     display: none;
   }
 
-  .demo-notice,
-  .diagnostic-control {
+  .demo-notice {
     align-self: stretch;
   }
 

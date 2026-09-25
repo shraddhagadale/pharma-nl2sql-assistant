@@ -79,28 +79,6 @@ export function ChatMessage({ message }: { message: Message }) {
       <div className="assistant-body">
         <p className="answer-text">{message.content}</p>
         <ResultTable message={message} />
-
-        {message.response?.assumptions.length ? (
-          <details className="answer-details">
-            <summary>Scope and assumptions ({message.response.assumptions.length})</summary>
-            <ul>
-              {message.response.assumptions.map((assumption) => (
-                <li key={assumption}>{assumption}</li>
-              ))}
-            </ul>
-          </details>
-        ) : null}
-
-        {message.response?.sql ? (
-          <details className="answer-details sql-details">
-            <summary>Validated SQL</summary>
-            <pre><code>{message.response.sql}</code></pre>
-          </details>
-        ) : null}
-
-        {message.response ? (
-          <span className="request-id">Request {message.response.request_id.slice(0, 8)}</span>
-        ) : null}
       </div>
     </article>
   );
