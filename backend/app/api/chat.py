@@ -50,4 +50,5 @@ async def chat(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="The analytics model is not configured or temporarily unavailable.",
+            headers={"X-Agent-Error-Code": error.code},
         ) from error

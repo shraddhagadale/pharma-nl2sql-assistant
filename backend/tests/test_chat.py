@@ -69,6 +69,7 @@ def test_chat_reports_missing_model_configuration(client):
         json={"question": "Show paid demand for the last 3 months"},
     )
     assert response.status_code == 503
+    assert response.headers["X-Agent-Error-Code"] == "model_not_configured"
     assert "model is not configured" in response.json()["detail"]
 
 

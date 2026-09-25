@@ -27,8 +27,11 @@ search index scores normalized query terms using heading matches, section term
 frequency, inverse section frequency, and exact-phrase matches. The corpus is
 small enough that this requires no vector database or external service. The
 backend prefetches the six best sections from the current question and recent
-user turns so straightforward requests do not require an extra model/tool
-round trip.
+user turns, with at most two sections per document so one vocabulary-heavy
+document cannot crowd out other relevant business rules. The search also adds
+generic business-rule vocabulary for metrics, periods, sources, hierarchy, and
+access so short natural-language questions still retrieve those rule classes.
+Straightforward requests therefore do not require an extra model/tool round trip.
 
 The model receives two bounded function tools:
 

@@ -33,6 +33,22 @@ def test_search_returns_markdown_sections_for_metric_and_period(
     assert any(document == "period_offsets.md" for document, _ in locations)
 
 
+def test_diverse_search_covers_account_and_period_documents(
+    knowledge: DomainKnowledgeRepository,
+) -> None:
+    results = knowledge.search_diverse(
+        "Rank the top 10 accounts by pack units last quarter. "
+        "metric definition time period offsets data source hierarchy security",
+        limit=6,
+    )
+    documents = [item.document for item in results]
+
+    assert "account_analytics.md" in documents
+    assert "period_offsets.md" in documents
+    assert any(item.heading == "Common Time Windows" for item in results)
+    assert max(documents.count(document) for document in set(documents)) <= 2
+
+
 def test_read_returns_exact_section_with_digest(
     knowledge: DomainKnowledgeRepository,
 ) -> None:

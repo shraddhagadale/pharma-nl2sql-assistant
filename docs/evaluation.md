@@ -43,7 +43,7 @@ document set, retrieval, exact-section reads, digests, and path boundaries.
 
 ## Regression evidence
 
-- Backend: **64 tests passed**, including real local PostgreSQL product-flow
+- Backend: **65 tests passed**, including real local PostgreSQL product-flow
   tests across RAM, director, and executive identities plus generalized
   conversation-outcome and geography-scope coverage.
 - Frontend: type checking and linting passed; **5 component tests passed**; the

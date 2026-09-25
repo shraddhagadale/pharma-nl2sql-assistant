@@ -25,12 +25,15 @@ from app.domain.knowledge import DomainKnowledgeError, DomainKnowledgeRepository
 
 MAX_DOMAIN_TOOL_CALLS = 3
 PREFETCHED_DOMAIN_SECTIONS = 6
+GROUNDING_SEARCH_CONTEXT = "metric definition time period offsets data source hierarchy security"
 
 logger = logging.getLogger("pharma.model")
 
 
 class PlanningModelError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, code: str = "planning_model_error") -> None:
+        self.code = code
+        super().__init__(message)
 
 
 class PlanningModel(Protocol):
@@ -53,7 +56,7 @@ class PlanningModel(Protocol):
 
 class UnavailablePlanningModel:
     async def plan(self, context: PlanningContext) -> AnalyticsPlan:
-        raise PlanningModelError("No model API key is configured")
+        raise PlanningModelError("No model API key is configured", code="model_not_configured")
 
     async def repair(
         self,
@@ -61,7 +64,7 @@ class UnavailablePlanningModel:
         prior_plan: AnalyticsPlan,
         issues: list[str],
     ) -> AnalyticsPlan:
-        raise PlanningModelError("No model API key is configured")
+        raise PlanningModelError("No model API key is configured", code="model_not_configured")
 
     async def summarize(
         self,
@@ -69,7 +72,7 @@ class UnavailablePlanningModel:
         plan: AnalyticsPlan,
         result: QueryResult,
     ) -> AnswerSummary:
-        raise PlanningModelError("No model API key is configured")
+        raise PlanningModelError("No model API key is configured", code="model_not_configured")
 
 
 class OpenAIPlanningModel:
@@ -159,7 +162,10 @@ class OpenAIPlanningModel:
                 outcome="error",
                 error_type=type(error).__name__,
             )
-            raise PlanningModelError("The model request failed") from error
+            raise PlanningModelError(
+                "The model request failed",
+                code="provider_request_failed",
+            ) from error
 
         self._log_model_call(
             request_id=request_id,
@@ -172,7 +178,10 @@ class OpenAIPlanningModel:
 
         parsed = response.output_parsed
         if parsed is None:
-            raise PlanningModelError("The model returned no structured output")
+            raise PlanningModelError(
+                "The model returned no structured output",
+                code="invalid_structured_output",
+            )
         return parsed
 
     async def _parse_with_domain_tools(
@@ -212,7 +221,10 @@ class OpenAIPlanningModel:
                     outcome="error",
                     error_type=type(error).__name__,
                 )
-                raise PlanningModelError("The model request failed") from error
+                raise PlanningModelError(
+                    "The model request failed",
+                    code="provider_request_failed",
+                ) from error
 
             self._log_model_call(
                 request_id=context.request_id,
@@ -227,17 +239,29 @@ class OpenAIPlanningModel:
             if not tool_calls:
                 plan = response.output_parsed
                 if plan is None:
-                    raise PlanningModelError("The model returned no structured output")
+                    raise PlanningModelError(
+                        "The model returned no structured output",
+                        code="invalid_structured_output",
+                    )
                 if plan.decision is PlanDecision.QUERY:
                     cited = {(item.document, item.heading) for item in plan.evidence}
                     if not cited:
-                        raise PlanningModelError("The analytics plan did not cite domain knowledge")
+                        raise PlanningModelError(
+                            "The analytics plan did not cite domain knowledge",
+                            code="missing_grounding_citation",
+                        )
                     if not cited.issubset(observed_sections):
-                        raise PlanningModelError("The analytics plan cited unread domain knowledge")
+                        raise PlanningModelError(
+                            "The analytics plan cited unread domain knowledge",
+                            code="invalid_grounding_citation",
+                        )
                 return plan
 
             if tool_calls_used + len(tool_calls) > MAX_DOMAIN_TOOL_CALLS:
-                raise PlanningModelError("The model exceeded the domain knowledge tool limit")
+                raise PlanningModelError(
+                    "The model exceeded the domain knowledge tool limit",
+                    code="domain_tool_limit",
+                )
             tool_calls_used += len(tool_calls)
             input_items.extend(response.output)
             for tool_call in tool_calls:
@@ -256,16 +280,19 @@ class OpenAIPlanningModel:
                         "output": json.dumps(result, sort_keys=True),
                     }
                 )
-        raise PlanningModelError("The model did not return a final analytics plan")
+        raise PlanningModelError(
+            "The model did not return a final analytics plan",
+            code="incomplete_tool_loop",
+        )
 
     def _prefetch_grounding(self, context: PlanningContext) -> list[dict[str, str]]:
         recent_user_turns = [
             turn.content for turn in context.conversation if turn.role.value == "user"
         ][-4:]
-        query = " ".join([*recent_user_turns, context.question])
+        query = " ".join([*recent_user_turns, context.question, GROUNDING_SEARCH_CONTEXT])
         return [
             section.as_result()
-            for section in self.domain_knowledge.search(
+            for section in self.domain_knowledge.search_diverse(
                 query,
                 limit=PREFETCHED_DOMAIN_SECTIONS,
             )

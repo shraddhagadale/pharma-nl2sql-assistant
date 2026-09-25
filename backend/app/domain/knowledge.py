@@ -121,12 +121,32 @@ class DomainKnowledgeRepository:
         raise DomainKnowledgeError(f"unknown domain knowledge tool: {name}")
 
     def search(self, query: str, *, limit: int = 4) -> list[KnowledgeSection]:
-        tokens = self._tokens(query)
-        if not tokens:
-            raise DomainKnowledgeError("search query must contain words")
-        if not 1 <= limit <= 6:
-            raise DomainKnowledgeError("search limit must be between 1 and 6")
+        self._validate_search(query, limit)
+        return self._ranked_sections(query)[:limit]
 
+    def search_diverse(
+        self,
+        query: str,
+        *,
+        limit: int = 6,
+        max_per_document: int = 2,
+    ) -> list[KnowledgeSection]:
+        self._validate_search(query, limit)
+        if max_per_document < 1:
+            raise DomainKnowledgeError("max sections per document must be positive")
+        selected: list[KnowledgeSection] = []
+        document_counts: Counter[str] = Counter()
+        for section in self._ranked_sections(query):
+            if document_counts[section.document] >= max_per_document:
+                continue
+            selected.append(section)
+            document_counts[section.document] += 1
+            if len(selected) == limit:
+                break
+        return selected
+
+    def _ranked_sections(self, query: str) -> list[KnowledgeSection]:
+        tokens = self._tokens(query)
         token_counts = Counter(tokens)
         scored: list[tuple[float, KnowledgeSection]] = []
         for section in self._sections:
@@ -145,7 +165,13 @@ class DomainKnowledgeRepository:
                 scored.append((score, section))
 
         scored.sort(key=lambda item: (-item[0], item[1].document, item[1].heading))
-        return [section for _, section in scored[:limit]]
+        return [section for _, section in scored]
+
+    def _validate_search(self, query: str, limit: int) -> None:
+        if not self._tokens(query):
+            raise DomainKnowledgeError("search query must contain words")
+        if not 1 <= limit <= 6:
+            raise DomainKnowledgeError("search limit must be between 1 and 6")
 
     def read(self, document: str, heading: str) -> KnowledgeSection:
         if document not in self._documents:

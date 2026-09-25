@@ -37,7 +37,9 @@ def request_json(
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:500]
         if error.code in {502, 503, 504}:
-            raise TransientRequestError(error.code, detail) from error
+            error_code = error.headers.get("X-Agent-Error-Code")
+            suffix = f" [agent_error={error_code}]" if error_code else ""
+            raise TransientRequestError(error.code, detail + suffix) from error
         raise AssertionError(
             f"{request.method} {url} returned {error.code}: {detail}"
         ) from error

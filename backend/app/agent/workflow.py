@@ -29,7 +29,9 @@ from app.sql.validator import (
 
 
 class AgentUnavailableError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, code: str = "planning_model_error") -> None:
+        self.code = code
+        super().__init__(message)
 
 
 class AgentWorkflow:
@@ -86,7 +88,10 @@ class AgentWorkflow:
                 error_code="model_unavailable",
                 planning_ms=planning_ms,
             )
-            raise AgentUnavailableError("The analytics model is unavailable") from error
+            raise AgentUnavailableError(
+                "The analytics model is unavailable",
+                code=error.code,
+            ) from error
         planning_ms = self._elapsed_ms(planning_started)
 
         if plan.decision is not PlanDecision.QUERY:
