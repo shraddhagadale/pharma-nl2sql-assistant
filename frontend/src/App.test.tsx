@@ -150,7 +150,7 @@ describe("analytics chat", () => {
       }
       if (path.endsWith("/chat")) {
         chatAttempts += 1;
-        if (chatAttempts === 1) {
+        if (chatAttempts <= 2) {
           return new Response(
             JSON.stringify({ detail: "This analysis is taking longer than expected." }),
             {
@@ -181,8 +181,41 @@ describe("analytics chat", () => {
     expect(await screen.findByText("Paid demand is 1,240 pack units.")).toBeInTheDocument();
 
     const chatCalls = fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/chat"));
+    expect(chatCalls).toHaveLength(3);
+    expect(String(chatCalls[1][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
+    expect(String(chatCalls[2][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
+    expect(JSON.parse(String(chatCalls[2][1]?.body)).conversation).toEqual([]);
+  });
+
+  it("recovers from one transient chat failure before showing an error", async () => {
+    let chatAttempts = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path.endsWith("/demo/users")) return jsonResponse([ram]);
+      if (path.endsWith("/demo/session") && (!init?.method || init.method === "GET")) {
+        return jsonResponse({ detail: "Not authenticated" }, 401);
+      }
+      if (path.endsWith("/demo/session") && init?.method === "POST") {
+        return jsonResponse(ram);
+      }
+      if (path.endsWith("/chat")) {
+        chatAttempts += 1;
+        return chatAttempts === 1
+          ? jsonResponse({ detail: "The analytics model is temporarily unavailable." }, 503)
+          : jsonResponse(answer);
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText("View as"), { target: { value: "U009" } });
+    await screen.findByText("New York Metro");
+    fireEvent.click(screen.getByRole("button", { name: /show paid demand for the last 3 months/i }));
+
+    expect(await screen.findByText("Paid demand is 1,240 pack units.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry analysis" })).not.toBeInTheDocument();
+    const chatCalls = fetchMock.mock.calls.filter(([path]) => String(path).endsWith("/chat"));
     expect(chatCalls).toHaveLength(2);
     expect(String(chatCalls[1][1]?.body)).toEqual(String(chatCalls[0][1]?.body));
-    expect(JSON.parse(String(chatCalls[1][1]?.body)).conversation).toEqual([]);
   });
 });

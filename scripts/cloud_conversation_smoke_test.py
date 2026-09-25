@@ -5,10 +5,17 @@ import argparse
 import json
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from http.cookiejar import CookieJar
 from typing import Any
+
+
+class TransientRequestError(RuntimeError):
+    def __init__(self, status_code: int, detail: str) -> None:
+        self.status_code = status_code
+        super().__init__(detail)
 
 
 def request_json(
@@ -29,11 +36,8 @@ def request_json(
             raw = response.read()
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:500]
-        if error.code == 503:
-            raise RuntimeError(
-                "the deployed model is temporarily unavailable; verify provider health "
-                "and runtime configuration, then retry"
-            ) from error
+        if error.code in {502, 503, 504}:
+            raise TransientRequestError(error.code, detail) from error
         raise AssertionError(
             f"{request.method} {url} returned {error.code}: {detail}"
         ) from error
@@ -61,18 +65,27 @@ def ask(
     *,
     include_sql: bool = False,
 ) -> dict[str, Any]:
-    try:
-        return request_json(
-            opener,
-            f"{base_url}/api/v1/chat",
-            payload={
-                "question": question,
-                "conversation": conversation or [],
-                "include_sql": include_sql,
-            },
-        )
-    except RuntimeError as error:
-        raise RuntimeError(f"{question!r}: {error}") from error
+    payload = {
+        "question": question,
+        "conversation": conversation or [],
+        "include_sql": include_sql,
+    }
+    for attempt in range(2):
+        try:
+            return request_json(
+                opener,
+                f"{base_url}/api/v1/chat",
+                payload=payload,
+            )
+        except TransientRequestError as error:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            raise RuntimeError(
+                f"{question!r}: transient HTTP {error.status_code} after two attempts: "
+                f"{error}"
+            ) from error
+    raise AssertionError(f"{question!r}: chat retry loop ended unexpectedly")
 
 
 def run(base_url: str) -> None:

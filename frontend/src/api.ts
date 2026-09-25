@@ -60,9 +60,19 @@ export function deleteSession(): Promise<void> {
   return request<void>("/api/v1/demo/session", { method: "DELETE" });
 }
 
-export function sendChat(payload: ChatRequest): Promise<ChatResponse> {
-  return request<ChatResponse>("/api/v1/chat", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+export async function sendChat(payload: ChatRequest): Promise<ChatResponse> {
+  const body = JSON.stringify(payload);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await request<ChatResponse>("/api/v1/chat", {
+        method: "POST",
+        body
+      });
+    } catch (error) {
+      const retryable =
+        error instanceof ApiError && [502, 503, 504].includes(error.status);
+      if (!retryable || attempt === 1) throw error;
+    }
+  }
+  throw new Error("The analytics request could not be completed.");
 }
