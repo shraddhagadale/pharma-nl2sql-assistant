@@ -6,7 +6,7 @@ This repository has an independent Git history. The original assignment is used 
 
 ## Architecture at a glance
 
-- React and TypeScript chat interface
+- React and TypeScript chat interface served through an Nginx same-origin proxy
 - Python and FastAPI backend
 - PostgreSQL locally and Amazon RDS for PostgreSQL in AWS
 - Database row-level security for territory and region scope
@@ -58,13 +58,14 @@ NL-to-SQL workflow. Copy `.env.example` to `.env` and set
 ```bash
 docker compose up -d --wait postgres
 ./scripts/setup_backend_db.sh
-docker compose --profile application up -d --build --wait backend
+docker compose --profile application up -d --build --wait
 curl http://localhost:8000/ready
 ```
 
-The API is available at `http://localhost:8000`, with interactive documentation
-at `http://localhost:8000/docs`. See [docs/backend.md](docs/backend.md) for its
-routes, security boundaries, tests, and local workflow.
+The application is available at `http://localhost:3000`. The API remains
+available at `http://localhost:8000`, with interactive documentation at
+`http://localhost:8000/docs`. See [docs/backend.md](docs/backend.md) for its
+routes and [docs/frontend.md](docs/frontend.md) for the UI workflow and tests.
 
 The conversational route is `POST /api/v1/chat`. Its model, validator, repair,
 execution, and fallback boundaries are documented in [docs/agent.md](docs/agent.md).
@@ -106,10 +107,10 @@ See `infra/terraform/README.md` for review, cost, plan, apply, verification, and
 
 ## Current status
 
-Phase 7 complete — the structured NL-to-SQL workflow is implemented and locally
-verified through the real PostgreSQL/RLS execution path. A live remote-model
-smoke test requires a separately supplied API key. Next: Phase 8, the React and
-TypeScript chat interface.
+Phase 8 complete — the responsive React/TypeScript chat interface, same-origin
+proxy, role-aware user switcher, result rendering, safe error states, and
+diagnostic SQL affordance are implemented. Next: Checkpoint 4, the local product
+gate across representative conversations and roles.
 
 ## Source material
 

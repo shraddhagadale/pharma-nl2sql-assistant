@@ -31,7 +31,7 @@ More detailed component boundaries are documented in `docs/architecture.md`.
 
 ### Application
 
-- **Frontend:** React and TypeScript for a responsive chat experience and typed API contracts.
+- **Frontend:** React and TypeScript with Vite for a responsive chat experience and typed API contracts. A multi-stage container serves built assets through Nginx and proxies API paths to FastAPI on the same browser origin.
 - **Backend:** Python and FastAPI for typed request handling, strong data/LLM library support, and straightforward async I/O.
 - **Database access:** SQLAlchemy with PostgreSQL driver support. Raw generated analytics SQL is executed through a narrowly scoped executor rather than the ORM.
 - **Validation:** `sqlglot` parses SQL into an AST so policy checks operate on structure, not fragile regular expressions.

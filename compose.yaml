@@ -64,5 +64,15 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    profiles: ["application"]
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   postgres_data:
