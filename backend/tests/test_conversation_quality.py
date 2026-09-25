@@ -4,6 +4,7 @@ from app.agent.models import AnalyticsPlan, AnswerSummary, QueryResult
 from app.agent.workflow import AgentWorkflow
 from app.audit import AuditLogger
 from app.models import ChatStatus, UserContext, UserRole
+from app.sql.executor import UnknownProductError
 from app.sql.validator import SqlValidator
 
 VALID_SQL = """
@@ -198,3 +199,46 @@ async def test_technical_model_language_is_replaced_and_not_exposed_in_notes() -
         "Paid demand excludes free drug.",
         "Showing results for your assigned territory: Central Plains.",
     ]
+
+
+@pytest.mark.asyncio
+async def test_markdown_emphasis_is_removed_from_business_answer() -> None:
+    response = await run(
+        QualityModel(plan(), answer="Paid demand was **42 pack units**."),
+        QualityExecutor(),
+    )
+
+    assert response.status is ChatStatus.ANSWERED
+    assert response.answer == "Paid demand was 42 pack units."
+
+
+@pytest.mark.asyncio
+async def test_markdown_emphasis_is_removed_from_clarification() -> None:
+    model = QualityModel(
+        AnalyticsPlan(
+            decision="clarification",
+            response="I can help with **paid demand** and market share.",
+        )
+    )
+    executor = QualityExecutor()
+
+    response = await run(model, executor)
+
+    assert response.status is ChatStatus.CLARIFICATION
+    assert response.answer == "I can help with paid demand and market share."
+    assert executor.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_unknown_product_gets_clarification_instead_of_zero() -> None:
+    response = await run(
+        QualityModel(plan()),
+        QualityExecutor(error=UnknownProductError("MoonCure")),
+    )
+
+    assert response.status is ChatStatus.CLARIFICATION
+    assert response.rows == []
+    assert response.answer == (
+        "I couldn't find MoonCure in the documented product portfolio. "
+        "Please check the product name or ask about another product."
+    )

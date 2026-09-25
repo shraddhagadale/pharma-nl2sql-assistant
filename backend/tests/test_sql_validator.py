@@ -79,6 +79,29 @@ def test_user_filter_requires_and_preserves_named_parameter() -> None:
 
     assert "%(drug_name)s" in validated.sql
     assert validated.parameters == {"drug_name": "ZENOVAX"}
+    assert validated.product_lookups == (("drug_name", "drug_name"),)
+
+
+def test_product_lookup_is_detected_inside_case_expression() -> None:
+    candidate = plan(
+        metric_id="paid_demand",
+        time_window_id="last_month",
+        sql="""
+            SELECT COALESCE(SUM(
+                CASE WHEN UPPER(s.drug_name) = UPPER(:product_name)
+                     THEN s.pack_units ELSE 0 END
+            ), 0) AS paid_demand
+            FROM sales AS s
+            WHERE s.data_source = 'distributor'
+              AND s.brand_flag = 1
+              AND s.mo_offset = 1
+        """,
+        parameters=[QueryParameter(name="product_name", value="MoonCure")],
+    )
+
+    validated = validate(candidate)
+
+    assert validated.product_lookups == (("drug_name", "product_name"),)
 
 
 def test_exec_revenue_is_allowed_and_limited_role_wac_is_rejected() -> None:

@@ -59,6 +59,7 @@ class ValidatedQuery:
     fingerprint: str
     referenced_tables: tuple[str, ...]
     referenced_columns: tuple[str, ...]
+    product_lookups: tuple[tuple[str, str], ...]
     row_limit: int
 
 
@@ -180,6 +181,7 @@ class SqlValidator:
                 issues.append(f"string literal must be a named parameter: {literal.this[:40]}")
 
         row_limit = self._enforce_limit(tree, issues)
+        product_lookups = self._product_lookups(tree)
 
         if issues:
             raise SqlValidationError(issues)
@@ -192,8 +194,24 @@ class SqlValidator:
             fingerprint=fingerprint,
             referenced_tables=tuple(sorted(tables)),
             referenced_columns=tuple(sorted(columns)),
+            product_lookups=product_lookups,
             row_limit=row_limit,
         )
+
+    @staticmethod
+    def _product_lookups(tree: exp.Select) -> tuple[tuple[str, str], ...]:
+        lookups: set[tuple[str, str]] = set()
+        for comparison in tree.find_all(exp.EQ):
+            product_columns = {
+                column.name
+                for column in comparison.find_all(exp.Column)
+                if column.name in {"drug_name", "ndc"}
+            }
+            placeholders = {item.name for item in comparison.find_all(exp.Placeholder)}
+            if len(product_columns) == 1:
+                column_name = next(iter(product_columns))
+                lookups.update((column_name, name) for name in placeholders)
+        return tuple(sorted(lookups))
 
     def _enforce_limit(self, tree: exp.Select, issues: list[str]) -> int:
         limit = tree.args.get("limit")

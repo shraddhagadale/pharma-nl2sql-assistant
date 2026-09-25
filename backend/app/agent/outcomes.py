@@ -12,6 +12,11 @@ TECHNICAL_LANGUAGE = re.compile(
 )
 
 
+def plain_business_text(value: str) -> str:
+    """Keep model-authored copy conversational for the plain-text chat UI."""
+    return value.replace("*", "").replace("`", "").strip()
+
+
 @dataclass(frozen=True, slots=True)
 class OutcomeDecision:
     status: ChatStatus
@@ -92,10 +97,21 @@ class ConversationOutcomeClassifier:
     @staticmethod
     def business_notes(values: list[str]) -> list[str]:
         return [
-            value
+            plain_business_text(value)
             for value in values
             if value and ConversationOutcomeClassifier.is_business_friendly(value)
         ]
+
+    @staticmethod
+    def unknown_product(product_name: str) -> OutcomeDecision:
+        return OutcomeDecision(
+            status=ChatStatus.CLARIFICATION,
+            answer=(
+                f"I couldn't find {plain_business_text(product_name)} in the documented product "
+                "portfolio. Please check the product name or ask about another product."
+            ),
+            error_code="unknown_product",
+        )
 
     @staticmethod
     def outside_scope(user: UserContext) -> OutcomeDecision:

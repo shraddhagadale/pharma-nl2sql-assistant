@@ -7,7 +7,7 @@ from app.agent.models import (
     PlanningContext,
     QueryResult,
 )
-from app.agent.outcomes import ConversationOutcomeClassifier
+from app.agent.outcomes import ConversationOutcomeClassifier, plain_business_text
 from app.agent.provider import PlanningModel, PlanningModelError
 from app.audit import AuditEvent, AuditLogger
 from app.db.geography import GeographyScopeRepository
@@ -17,7 +17,7 @@ from app.models import (
     ConversationTurn,
     UserContext,
 )
-from app.sql.executor import QueryExecutor
+from app.sql.executor import QueryExecutor, UnknownProductError
 from app.sql.schema import role_safe_schema
 from app.sql.validator import SqlValidationError, SqlValidator, ValidatedQuery
 
@@ -94,7 +94,9 @@ class AgentWorkflow:
             )
             return ChatResponse(
                 status=status,
-                answer=plan.response or "Please clarify the requested analysis.",
+                answer=plain_business_text(
+                    plan.response or "Please clarify the requested analysis."
+                ),
                 assumptions=[self._scope_assumption(user)],
                 request_id=request_id,
             )
@@ -166,6 +168,24 @@ class AgentWorkflow:
 
         try:
             result = await self.executor.execute(validated, user=user)
+        except UnknownProductError as error:
+            failure = ConversationOutcomeClassifier.unknown_product(error.product_name)
+            self._record(
+                request_id=request_id,
+                user=user,
+                outcome=failure.status.value,
+                started=started,
+                row_count=0,
+                error_code=failure.error_code,
+                sql_fingerprint=validated.fingerprint,
+                repair_count=repair_count,
+            )
+            return ChatResponse(
+                status=failure.status,
+                answer=failure.answer,
+                assumptions=[self._scope_assumption(user)],
+                request_id=request_id,
+            )
         except Exception as error:
             failure = ConversationOutcomeClassifier.classify_execution_error(error)
             self._record(
@@ -245,10 +265,12 @@ class AgentWorkflow:
     ) -> AnswerSummary:
         try:
             summary = await self.model.summarize(context, plan, result)
-            if summary.answer.strip() and ConversationOutcomeClassifier.is_business_friendly(
-                summary.answer
-            ):
-                return summary
+            answer = plain_business_text(summary.answer)
+            if answer and ConversationOutcomeClassifier.is_business_friendly(answer):
+                return AnswerSummary(
+                    answer=answer,
+                    notes=[plain_business_text(note) for note in summary.notes],
+                )
         except PlanningModelError:
             pass
         return AnswerSummary(
