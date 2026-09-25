@@ -2,6 +2,9 @@
 
 Date verified: 2026-09-25
 
+The submission-facing case matrix, representative SQL, expected-versus-actual
+results, and recorded evidence are consolidated in [test_results.md](test_results.md).
+
 ## Evaluation model
 
 The project separates reproducible safety/correctness evaluation from live LLM

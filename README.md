@@ -4,6 +4,22 @@ An end-to-end conversational analytics application that turns business questions
 
 This repository has an independent Git history. The original assignment is used only as a source reference: [cveeraiy/nl2sql-assignment](https://github.com/cveeraiy/nl2sql-assignment).
 
+## Submission links
+
+| Deliverable | Link |
+| --- | --- |
+| Live application | [http://100.28.234.67](http://100.28.234.67) |
+| Architecture, assumptions, and decisions | [DESIGN.md](DESIGN.md) |
+| Test cases and recorded results | [docs/test_results.md](docs/test_results.md) |
+| Evaluation methodology | [docs/evaluation.md](docs/evaluation.md) |
+| AWS deployment and rollback | [docs/deployment.md](docs/deployment.md) |
+| Verified application release | [`5909c86`](https://github.com/shraddhagadale/pharma-nl2sql-assistant/commit/5909c8676891672930c371fde81832f430663cb4) |
+| Successful CI and deployment evidence | [GitHub Actions run 36181367805](https://github.com/shraddhagadale/pharma-nl2sql-assistant/actions/runs/36181367805) |
+
+The public endpoint is intentionally HTTP-only because the synthetic-data demo
+has no domain or trusted certificate. Do not submit real patient, prescriber,
+facility, or other sensitive information.
+
 ## Architecture at a glance
 
 - React and TypeScript chat interface served through an Nginx same-origin proxy
@@ -15,7 +31,10 @@ This repository has an independent Git history. The original assignment is used 
 - Deterministic validation with `sqlglot` before any query executes
 - Terraform-managed EC2, RDS, S3, secrets, logging, and security groups
 
-The complete decisions, assumptions, and trade-offs are in [DESIGN.md](DESIGN.md). The implementation sequence and quality gates are in [docs/implementation_plan.md](docs/implementation_plan.md).
+The final architecture, prompt/security boundaries, assumptions, implementation
+decisions, performance rationale, and trade-offs are in [DESIGN.md](DESIGN.md).
+The implementation sequence and quality gates are in
+[docs/implementation_plan.md](docs/implementation_plan.md).
 
 ## Local database quick start
 
@@ -71,6 +90,11 @@ The conversational route is `POST /api/v1/chat`. Its model, validator, repair,
 execution, and fallback boundaries are documented in [docs/agent.md](docs/agent.md).
 
 ## Evaluation
+
+The submission-facing expected-versus-actual evidence is in
+[docs/test_results.md](docs/test_results.md). It consolidates the versioned SQL
+policy cases, representative generated SQL, role-scope results, edge cases,
+full-data checks, performance evidence, and the existing successful cloud gate.
 
 Run the versioned SQL security-policy suite with:
 
@@ -132,7 +156,14 @@ secrets remain in AWS Secrets Manager.
 Phase 10 implementation and deployment automation are complete. The public
 application runs against the complete RDS dataset and the remote model is
 configured. The direct Markdown knowledge-tool architecture and marker-free
-conversation follow-ups passed the updated live cloud conversation gate.
+conversation follow-ups passed the recorded live cloud conversation gate for
+application commit `5909c86`. Final documentation changes do not alter or
+redeploy that verified application release.
+
+Known limitations include demo-user selection rather than production identity,
+HTTP-only transport, a single EC2 application host, local Terraform state, and
+the supplied synthetic `market_data` composition. These assumptions and their
+production alternatives are documented explicitly in [DESIGN.md](DESIGN.md).
 
 ## Source material
 

@@ -123,9 +123,11 @@ avoiding overlapping changes to the single demo instance.
 
 ## Verified cloud evidence
 
-The manual deployment and full live conversation gate were most recently
-verified on 2026-09-25. GitHub Actions deployment evidence is recorded in the
-workflow run and deployment environment after the CD workflow is enabled.
+The manual deployment and full live conversation gate were verified on
+2026-09-25. GitHub Actions then verified and deployed application commit
+`5909c86` through OIDC, immutable S3 packaging, and Systems Manager; its
+[successful workflow run](https://github.com/shraddhagadale/pharma-nl2sql-assistant/actions/runs/36181367805)
+also passed the model-backed conversation gate.
 
 - Dataset checksums and exact full-data counts passed.
 - `/health` and `/ready` passed through the public proxy.
