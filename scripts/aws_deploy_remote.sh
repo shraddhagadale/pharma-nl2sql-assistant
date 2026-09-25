@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 s3://bucket/full-data-prefix app-runtime-secret-arn" >&2
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+    echo "Usage: $0 s3://bucket/full-data-prefix app-runtime-secret-arn [release-id]" >&2
     exit 2
 fi
 
 data_uri="${1%/}"
 runtime_secret_arn="$2"
-source_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+release_id="${3:-manual}"
+source_dir="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 app_dir="/opt/pharma-nl2sql"
 data_dir="$app_dir/data"
 backend_container="pharma-backend"
 frontend_container="pharma-frontend"
 network_name="pharma-app"
 
+# shellcheck source=/dev/null
 source /opt/pharma-nl2sql/infrastructure.env
 
 if ! command -v psql >/dev/null 2>&1; then
@@ -215,5 +217,6 @@ if ! curl --fail --silent http://127.0.0.1/ready; then
     docker logs "$frontend_container" >&2
     exit 1
 fi
+printf '%s\n' "$release_id" >"$app_dir/current-release"
 echo
-echo "AWS application deployment passed with full-data quality and container health checks."
+echo "AWS application deployment passed for release $release_id with full-data quality and container health checks."

@@ -1,7 +1,9 @@
 # AWS Deployment
 
-Date verified: 2026-09-24  
-Region: `us-east-1`  
+Date verified: 2026-09-25
+
+Region: `us-east-1`
+
 Public demo: [http://100.28.234.67](http://100.28.234.67)
 
 ## Deployed topology
@@ -18,6 +20,8 @@ Public demo: [http://100.28.234.67](http://100.28.234.67)
   role passwords, the session secret, and an optional model API key. Terraform
   owns the secret metadata but does not place secret values in state.
 - Systems Manager performs deployment; inbound SSH is not allowed.
+- GitHub Actions assumes a least-privilege AWS role through OIDC; no long-lived
+  AWS access key is stored in GitHub.
 
 The demo deliberately uses the default VPC and HTTP. This synthetic-data
 assignment has no domain or certificate. A production deployment would add a
@@ -57,9 +61,68 @@ The workflow is idempotent for the current dataset version: later releases
 reuse S3 objects, skip a matching full-data load, preserve runtime credentials,
 and rebuild only changed image layers.
 
+## Continuous delivery from `main`
+
+`.github/workflows/ci-cd.yml` runs on pull requests, pushes to `main`, and
+manual dispatches. Pull requests stop after verification. A successful `main`
+verification continues into the `demo` GitHub environment and deploys the exact
+commit.
+
+The verification job runs:
+
+- the PostgreSQL fixture and complete backend test suite;
+- backend lint and formatting checks;
+- frontend typecheck, lint, tests, and production build;
+- Terraform formatting, validation, and mocked security tests;
+- release-script syntax checks; and
+- production backend and frontend container builds.
+
+The deployment job uses GitHub OIDC to assume the Terraform-managed
+`pharma-nl2sql-demo-github-deploy` role. Its AWS permissions are limited to the
+application release prefix in S3 and the SSM commands for the existing demo
+instance. The EC2 role, not GitHub, reads the database and application runtime
+secrets.
+
+Each source bundle is created with `git archive` and stored at:
+
+```text
+s3://<release-bucket>/releases/app/<40-character-commit-sha>/source.tar.gz
+```
+
+Routine code releases reuse `releases/full-data-v1/data`; generated CSVs are
+not regenerated or uploaded by CI. After SSM reports success, the workflow runs
+the public frontend/session security smoke test and the model-backed
+conversation gate.
+
+The `demo` GitHub environment defines these non-secret variables:
+
+- `AWS_ACCOUNT_ID`
+- `AWS_REGION`
+- `AWS_DEPLOY_ROLE_ARN`
+- `AWS_RELEASE_BUCKET`
+- `AWS_INSTANCE_ID`
+- `AWS_RUNTIME_SECRET_ARN`
+- `AWS_DATA_PREFIX`
+- `APP_URL`
+
+The OpenAI key and database credentials remain only in AWS Secrets Manager.
+
+### Rollback or redeploy
+
+Run the workflow manually from `main` and supply the full SHA of an existing
+immutable release as `release_id`. The workflow verifies that the S3 object
+exists, redeploys it through SSM, and reruns all post-deployment gates. Leaving
+`release_id` blank packages and deploys the selected `main` commit.
+
+Deployment concurrency is serialized without cancelling a running SSM command.
+GitHub keeps at most the active deployment and the latest pending deployment,
+avoiding overlapping changes to the single demo instance.
+
 ## Verified cloud evidence
 
-Successful deployment command: `ccb258d9-633f-40ac-9637-487fb4f17110`.
+The manual deployment and full live conversation gate were most recently
+verified on 2026-09-25. GitHub Actions deployment evidence is recorded in the
+workflow run and deployment environment after the CD workflow is enabled.
 
 - Dataset checksums and exact full-data counts passed.
 - `/health` and `/ready` passed through the public proxy.

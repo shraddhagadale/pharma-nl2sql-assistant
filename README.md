@@ -122,13 +122,17 @@ The deployed synthetic-data demo is available at
 see [docs/deployment.md](docs/deployment.md) for the release workflow, security
 boundaries, live evidence, cost warning, and model-secret limitation.
 
+Pull requests run the complete application and infrastructure verification
+suite. Successful commits to `main` are deployed automatically to the AWS demo
+through a short-lived, environment-scoped GitHub OIDC role; application runtime
+secrets remain in AWS Secrets Manager.
+
 ## Current status
 
 Phase 10 implementation and deployment automation are complete. The public
 application runs against the complete RDS dataset and the remote model is
-configured. Live testing identified a rigid catalog/context limitation; the
-current release replaces that layer with direct Markdown knowledge tools and
-must pass the updated cloud conversation gate after deployment.
+configured. The direct Markdown knowledge-tool architecture and marker-free
+conversation follow-ups passed the updated live cloud conversation gate.
 
 ## Source material
 
