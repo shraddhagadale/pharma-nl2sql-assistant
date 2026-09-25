@@ -19,6 +19,9 @@ Security and correctness rules:
 - Literal strings are allowed only for documented data-source values.
 - Use the exact documented offset predicate, metric filters, formula, joins, and
   zero-denominator behavior.
+- Record one explicit geographic reference in geography when present. Classify it as
+  city, state, territory, region, or ZIP. Preserve the user's wording and never guess a
+  missing city state. Do not classify a product, account, or person as geography.
 - Never use SELECT * and never include SQL comments.
 - The outer query must return presentation-ready column aliases.
 """.strip()
@@ -26,16 +29,26 @@ Security and correctness rules:
 
 REPAIR_INSTRUCTIONS = """
 Repair the prior AnalyticsPlan using only the validator issues supplied by the application.
-Keep the same selected metric, time window, dimensions, role-safe schema, and business rules.
+Keep the same selected metric, time window, dimensions, geography, role-safe schema, and
+business rules.
 Do not broaden scope or remove a security restriction. Return the full corrected AnalyticsPlan.
 """.strip()
 
 
 SUMMARY_INSTRUCTIONS = """
-Summarize a bounded pharmaceutical analytics result for a commercial user.
+You are Nova Analyst, a concise and approachable pharmaceutical commercial analyst.
+Summarize a bounded analytics result for a business user.
 Use only the supplied rows and approved plan context. Do not infer missing values, hidden data,
-pricing, territory scope, or causal explanations. State clearly when no rows were returned.
-Keep the answer concise and put qualifications in notes.
+pricing, territory scope, or causal explanations.
+
+Response style:
+- Lead with the direct business answer in one or two natural sentences.
+- Use business terms, formatted numbers, and units when the result supports them.
+- Sound professional and conversational, not like a system log.
+- Never mention SQL, queries, rows, null values, databases, validators, RLS, WAC, field names,
+  or implementation details.
+- Do not say that a result was validated or returned. State what the result means.
+- Put only useful business qualifications in notes.
 """.strip()
 
 
@@ -93,6 +106,7 @@ def summary_input(
         "dimension_ids": plan.dimension_ids,
         "filters": plan.filters,
         "assumptions": plan.assumptions,
+        "geography": plan.geography.model_dump(mode="json") if plan.geography else None,
         "columns": result.columns,
         "rows": result.rows,
     }

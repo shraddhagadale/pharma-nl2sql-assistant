@@ -72,7 +72,7 @@ class DomainRuleSelector:
                 comparison_time_window_ids=comparison_time_window_ids,
                 dimension_ids=[dimension.id for dimension in dimensions],
                 data_source_ids=data_source_ids,
-                denied_reason="WAC-derived revenue is available only to executives.",
+                denied_reason="Revenue in dollars is available only to executives.",
                 alternative_metric_id=denied_metric.alternative_metric,
             )
 

@@ -1,6 +1,6 @@
 # Evaluation and Final Evidence
 
-Date verified: 2026-09-24
+Date verified: 2026-09-25
 
 ## Evaluation model
 
@@ -13,7 +13,10 @@ behavior:
 2. **Integration evaluation** exercises the actual FastAPI workflow, SQL
    validator, role-specific connection pools, PostgreSQL RLS/grants, and React
    proxy boundary with injected typed planner results.
-3. **Live conversation evaluation** calls the configured remote model through
+3. **Conversation-quality evaluation** uses generic identities and locations to
+   test clarification, access limits, no-data handling, timeout/failure language,
+   and the removal of implementation terminology from user-facing answers.
+4. **Live conversation evaluation** calls the configured remote model through
    the deployed product. It is a configuration-dependent release gate and is
    never replaced by a scripted model while being reported as live.
 
@@ -40,8 +43,9 @@ makes the complete suite part of the normal test run.
 
 ## Regression evidence
 
-- Backend: **52 tests passed**, including real local PostgreSQL product-flow
-  tests across RAM, director, and executive identities.
+- Backend: **59 tests passed**, including real local PostgreSQL product-flow
+  tests across RAM, director, and executive identities plus generalized
+  conversation-outcome and geography-scope coverage.
 - Frontend: type checking and linting passed; **3 component tests passed**; the
   production Vite build passed.
 - Local containers: database fixture, RLS/WAC security, same-origin frontend,

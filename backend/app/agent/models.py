@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.models import DomainCatalog
@@ -17,6 +19,20 @@ class QueryParameter(AgentModel):
     value: ParameterValue
 
 
+class GeographyKind(StrEnum):
+    CITY = "city"
+    STATE = "state"
+    TERRITORY = "territory"
+    REGION = "region"
+    ZIP = "zip"
+
+
+class GeographyReference(AgentModel):
+    kind: GeographyKind
+    name: str = Field(min_length=1, max_length=120)
+    state: str | None = Field(default=None, max_length=80)
+
+
 class AnalyticsPlan(AgentModel):
     metric_id: str
     time_window_id: str
@@ -24,6 +40,7 @@ class AnalyticsPlan(AgentModel):
     dimension_ids: list[str]
     filters: list[str]
     assumptions: list[str]
+    geography: GeographyReference | None = None
     sql: str
     parameters: list[QueryParameter]
 

@@ -677,11 +677,18 @@ summary:focus-visible {
   background: #dfeee6;
 }
 
+.status-clarification,
 .status-denied {
   color: #8a5b22;
   background: #faebd5;
 }
 
+.status-no_data {
+  color: #53645c;
+  background: #e8eeea;
+}
+
+.status-error,
 .status-rejected {
   color: #8b4141;
   background: #f8e2df;

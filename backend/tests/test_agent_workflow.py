@@ -175,8 +175,11 @@ async def test_summary_failure_returns_validated_table_fallback() -> None:
     )
 
     assert result.status is ChatStatus.ANSWERED
-    assert result.answer == "The query returned 1 result row(s)."
-    assert "narrative summary was unavailable" in result.assumptions[-1]
+    assert result.answer == "I found the requested information and included it below."
+    assert result.assumptions == [
+        "Paid demand excludes free drug.",
+        "Showing company-wide results.",
+    ]
 
 
 @pytest.mark.asyncio

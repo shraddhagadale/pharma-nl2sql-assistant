@@ -41,7 +41,7 @@ function nextMessageId(): string {
 function safeErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 503) {
-      return "The analytics model is not configured yet. Add the server-side model key and try again.";
+      return "The analytics assistant is temporarily unavailable. Please try again later.";
     }
     if (error.status === 401) return "Your demo session expired. Select a user and try again.";
     return error.message;
@@ -174,7 +174,7 @@ export function App() {
           </div>
           <div className="connection-state">
             <span aria-hidden="true" />
-            RLS protected
+            Access protected
           </div>
         </header>
 
@@ -192,7 +192,7 @@ export function App() {
             </div>
           ) : !currentUser ? (
             <div className="welcome-state">
-              <span className="welcome-kicker">Database-enforced permissions</span>
+              <span className="welcome-kicker">Role-based access</span>
               <h2>Start with a demo role</h2>
               <p>
                 Choose a user to see how the same question is answered within executive,
@@ -200,8 +200,8 @@ export function App() {
               </p>
               <div className="welcome-flow" aria-label="Request flow">
                 <span>Question</span><i aria-hidden="true">→</i>
-                <span>Validated SQL</span><i aria-hidden="true">→</i>
-                <span>RLS-scoped answer</span>
+                <span>Business analysis</span><i aria-hidden="true">→</i>
+                <span>Scoped answer</span>
               </div>
             </div>
           ) : messages.length === 0 ? (
@@ -275,7 +275,7 @@ export function App() {
             </button>
           </form>
           <p className="composer-caption">
-            AI-generated analysis is validated before execution. Verify important decisions.
+            AI-generated analysis is checked before use. Verify important decisions.
           </p>
         </footer>
       </main>

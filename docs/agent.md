@@ -22,11 +22,15 @@ The optional conversation is limited to six turns of 1,000 characters each;
 the current question is limited to 2,000 characters. SQL is omitted unless the
 caller intentionally sets `include_sql` to `true`.
 
-Responses use one of three application statuses:
+Responses use explicit application statuses so the UI never has to infer an
+outcome from technical text:
 
-- `answered`: a validated query executed successfully
+- `answered`: the requested business result is available
+- `clarification`: a material ambiguity must be resolved before execution
+- `no_data`: execution succeeded but no meaningful value was available in scope
 - `denied`: deterministic role policy rejected the business request
-- `rejected`: generated SQL did not pass validation or safe execution failed
+- `error`: execution timed out or failed after validation
+- `rejected`: generated SQL did not pass validation
 
 If no model key is configured, the backend remains healthy but this route
 returns HTTP 503. This keeps database, session, and readiness checks usable
@@ -42,19 +46,27 @@ without pretending that NL-to-SQL inference is available.
 4. The backend sends only the role-safe schema and the selected catalog rules to
    the planning model.
 5. The model returns a Pydantic `AnalyticsPlan`: selected IDs, explanations,
-   named parameters, and one candidate PostgreSQL query.
-6. `sqlglot` parses the SQL. Deterministic checks require the plan to match the
+   an optional structured geography reference, named parameters, and one
+   candidate PostgreSQL query.
+6. Code classifies ambiguous city references and compares explicit city/state,
+   ZIP, territory, and region references with the user's assigned scope before
+   analytics execution. PostgreSQL RLS remains the final boundary if a reference
+   is absent or misclassified.
+7. `sqlglot` parses the SQL. Deterministic checks require the plan to match the
    selected domain rules and allow only one bounded read-only query over the
    approved schema.
-7. One repair attempt is allowed by default. The model receives validator
+8. One repair attempt is allowed by default. The model receives validator
    issues but cannot change the selected metric, periods, dimensions, or role
    schema. A second invalid result fails closed.
-8. The executor chooses the limited or executive pool from the database-backed
+9. The executor chooses the limited or executive pool from the database-backed
    user, starts a read-only transaction, sets `app.user_id` locally, and runs
    only the validated parameterized SQL.
-9. PostgreSQL RLS restricts rows and database grants independently restrict WAC.
-10. The model summarizes only the bounded result. If summarization fails, the
-    API still returns the validated table with a deterministic fallback message.
+10. PostgreSQL RLS restricts rows and database grants independently restrict WAC.
+11. Code classifies empty results, null-only aggregates, timeouts, and other
+    execution failures into distinct outcomes with business-language messages.
+12. The model summarizes only a bounded meaningful result. A language guard
+    replaces technical summaries, and a deterministic conversational fallback
+    keeps the result table available if summarization fails.
 
 The model never receives a generic database execution tool. This avoids a path
 where prompt text could bypass validation or where model-selected credentials
@@ -119,3 +131,8 @@ The tests use injected fake planning models, so they verify the complete
 selection-validation-execution-response path without spending API tokens or
 depending on a remote model. A live conversational smoke test additionally
 requires `PHARMA_OPENAI_API_KEY`.
+
+The conversation-quality suite uses generic users and locations rather than
+hard-coding one demo identity. It covers ambiguous geography, cross-scope
+requests, null-only aggregates, timeouts, other execution failures, and removal
+of technical language from answers and notes.

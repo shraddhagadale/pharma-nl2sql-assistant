@@ -28,8 +28,8 @@ const answer: ChatResponse = {
   status: "answered",
   answer: "Paid demand is 1,240 pack units.",
   columns: ["drug_name", "pack_units"],
-  rows: [{ drug_name: "ZENOVAX", pack_units: 1240 }],
-  assumptions: ["Results are limited by database RLS to New York Metro."],
+  rows: [{ drug_name: "ZENOVAX", pack_units: "1240.000" }],
+  assumptions: ["Showing results for your assigned territory: New York Metro."],
   sql: "SELECT SUM(pack_units) FROM sales LIMIT 100",
   request_id: "12345678-abcd"
 };
@@ -105,10 +105,10 @@ describe("analytics chat", () => {
 
     expect(
       await screen.findByText(
-        "The analytics model is not configured yet. Add the server-side model key and try again."
+        "The analytics assistant is temporarily unavailable. Please try again later."
       )
     ).toBeInTheDocument();
-    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/server-side model key/i)).not.toBeInTheDocument();
   });
 
   it("carries only the bounded prior conversation into a follow-up", async () => {

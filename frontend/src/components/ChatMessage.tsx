@@ -2,18 +2,27 @@ import type { AssistantMessage, ChatMessage as Message } from "../types";
 
 const STATUS_LABELS = {
   answered: "Answered",
+  clarification: "Needs clarification",
+  no_data: "No matching data",
   denied: "Access limited",
-  rejected: "Query rejected"
+  error: "Please try again",
+  rejected: "Couldn't answer"
 } as const;
 
 function columnLabel(column: string): string {
   return column.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function displayValue(value: string | number | boolean | null): string {
+function displayValue(column: string, value: string | number | boolean | null): string {
   if (value === null) return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return value.toLocaleString();
+  if (
+    /^-?\d+(?:\.\d+)?$/.test(value) &&
+    !/(^|_)(id|zip|ndc|period)($|_)/i.test(column)
+  ) {
+    return Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
+  }
   return value;
 }
 
@@ -37,7 +46,7 @@ function ResultTable({ message }: { message: AssistantMessage }) {
           {response.rows.map((row, rowIndex) => (
             <tr key={`${message.id}-${rowIndex}`}>
               {response.columns.map((column) => (
-                <td key={column}>{displayValue(row[column] ?? null)}</td>
+                <td key={column}>{displayValue(column, row[column] ?? null)}</td>
               ))}
             </tr>
           ))}

@@ -62,7 +62,10 @@ class ChatRequest(BaseModel):
 
 class ChatStatus(StrEnum):
     ANSWERED = "answered"
+    CLARIFICATION = "clarification"
+    NO_DATA = "no_data"
     DENIED = "denied"
+    ERROR = "error"
     REJECTED = "rejected"
 
 

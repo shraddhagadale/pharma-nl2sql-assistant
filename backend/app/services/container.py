@@ -8,6 +8,7 @@ from app.agent.provider import (
 from app.agent.workflow import AgentWorkflow
 from app.audit import AuditLogger
 from app.config import Settings
+from app.db.geography import GeographyScopeRepository
 from app.db.pools import DatabasePools
 from app.db.users import UserRepository
 from app.domain.catalog import CatalogRepository
@@ -43,6 +44,7 @@ class Services:
                 model=model,
                 validator=SqlValidator(max_rows=settings.agent_max_rows),
                 executor=QueryExecutor(pools),
+                geography=GeographyScopeRepository(pools),
                 audit=audit,
                 max_repairs=settings.agent_max_repairs,
             ),

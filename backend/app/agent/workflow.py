@@ -7,8 +7,10 @@ from app.agent.models import (
     QueryResult,
     build_domain_context,
 )
+from app.agent.outcomes import ConversationOutcomeClassifier
 from app.agent.provider import PlanningModel, PlanningModelError
 from app.audit import AuditEvent, AuditLogger
+from app.db.geography import GeographyScopeRepository
 from app.domain.models import DomainCatalog
 from app.domain.selector import DomainRuleSelector, SelectionStatus
 from app.models import (
@@ -35,6 +37,7 @@ class AgentWorkflow:
         model: PlanningModel,
         validator: SqlValidator,
         executor: QueryExecutor,
+        geography: GeographyScopeRepository | None = None,
         audit: AuditLogger,
         max_repairs: int,
     ) -> None:
@@ -43,6 +46,7 @@ class AgentWorkflow:
         self.model = model
         self.validator = validator
         self.executor = executor
+        self.geography = geography
         self.audit = audit
         self.max_repairs = max_repairs
 
@@ -103,6 +107,31 @@ class AgentWorkflow:
             )
             raise AgentUnavailableError("The analytics model is unavailable") from error
 
+        preflight = ConversationOutcomeClassifier.before_execution(plan, user=user)
+        if preflight is None and plan.geography is not None and self.geography is not None:
+            try:
+                within_scope = await self.geography.is_within_scope(plan.geography, user=user)
+            except Exception as error:
+                preflight = ConversationOutcomeClassifier.classify_execution_error(error)
+            else:
+                if within_scope is False:
+                    preflight = ConversationOutcomeClassifier.outside_scope(user)
+        if preflight is not None:
+            self._record(
+                request_id=request_id,
+                user=user,
+                outcome=preflight.status.value,
+                started=started,
+                row_count=0,
+                error_code=preflight.error_code,
+            )
+            return ChatResponse(
+                status=preflight.status,
+                answer=preflight.answer,
+                assumptions=[self._scope_assumption(user)],
+                request_id=request_id,
+            )
+
         validated: ValidatedQuery | None = None
         validation_issues: list[str] = []
         repair_count = 0
@@ -138,8 +167,8 @@ class AgentWorkflow:
             return ChatResponse(
                 status=ChatStatus.REJECTED,
                 answer=(
-                    "I couldn't produce a query that passed the safety and business-rule "
-                    "checks. Please rephrase the question with a metric and time period."
+                    "I couldn't complete that analysis as asked. Please rephrase it with "
+                    "a metric and time period."
                 ),
                 assumptions=[self._scope_assumption(user)],
                 request_id=request_id,
@@ -147,27 +176,57 @@ class AgentWorkflow:
 
         try:
             result = await self.executor.execute(validated, user=user)
-        except Exception:
+        except Exception as error:
+            failure = ConversationOutcomeClassifier.classify_execution_error(error)
             self._record(
                 request_id=request_id,
                 user=user,
                 outcome="error",
                 started=started,
                 row_count=0,
-                error_code="database_error",
+                error_code=failure.error_code,
                 sql_fingerprint=validated.fingerprint,
                 repair_count=repair_count,
             )
             return ChatResponse(
-                status=ChatStatus.REJECTED,
-                answer="The validated query could not be completed safely. Please try again.",
+                status=failure.status,
+                answer=failure.answer,
                 assumptions=[self._scope_assumption(user)],
+                request_id=request_id,
+            )
+
+        no_data = ConversationOutcomeClassifier.classify_result(result)
+        if no_data is not None:
+            self._record(
+                request_id=request_id,
+                user=user,
+                outcome=no_data.status.value,
+                started=started,
+                row_count=len(result.rows),
+                error_code=no_data.error_code,
+                sql_fingerprint=validated.fingerprint,
+                repair_count=repair_count,
+            )
+            return ChatResponse(
+                status=no_data.status,
+                answer=no_data.answer,
+                assumptions=self._ordered_unique(
+                    [
+                        *ConversationOutcomeClassifier.business_notes(plan.assumptions),
+                        self._scope_assumption(user),
+                    ]
+                ),
+                sql=validated.sql if include_sql else None,
                 request_id=request_id,
             )
 
         summary = await self._summarize(context, plan, result)
         assumptions = self._ordered_unique(
-            [*plan.assumptions, self._scope_assumption(user), *summary.notes]
+            [
+                *ConversationOutcomeClassifier.business_notes(plan.assumptions),
+                self._scope_assumption(user),
+                *ConversationOutcomeClassifier.business_notes(summary.notes),
+            ]
         )
         self._record(
             request_id=request_id,
@@ -196,18 +255,15 @@ class AgentWorkflow:
     ) -> AnswerSummary:
         try:
             summary = await self.model.summarize(context, plan, result)
-            if summary.answer.strip():
+            if summary.answer.strip() and ConversationOutcomeClassifier.is_business_friendly(
+                summary.answer
+            ):
                 return summary
         except PlanningModelError:
             pass
-        if not result.rows:
-            return AnswerSummary(
-                answer="No matching data was found for that request.",
-                notes=["The query completed successfully with no result rows."],
-            )
         return AnswerSummary(
-            answer=f"The query returned {len(result.rows)} result row(s).",
-            notes=["The narrative summary was unavailable; the validated table is shown."],
+            answer="I found the requested information and included it below.",
+            notes=[],
         )
 
     @staticmethod
@@ -235,10 +291,10 @@ class AgentWorkflow:
     @staticmethod
     def _scope_assumption(user: UserContext) -> str:
         if user.territory_name:
-            return f"Results are limited by database RLS to {user.territory_name}."
+            return f"Showing results for your assigned territory: {user.territory_name}."
         if user.region_name:
-            return f"Results are limited by database RLS to {user.region_name}."
-        return "Results use the executive global database scope."
+            return f"Showing results for your assigned region: {user.region_name}."
+        return "Showing company-wide results."
 
     @staticmethod
     def _ordered_unique(values: list[str]) -> list[str]:

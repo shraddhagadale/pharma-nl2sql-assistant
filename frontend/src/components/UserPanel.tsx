@@ -99,20 +99,20 @@ export function UserPanel({
             </div>
             <div>
               <dt>Pricing</dt>
-              <dd>{currentUser.can_view_wac ? "WAC enabled" : "Restricted"}</dd>
+              <dd>{currentUser.can_view_wac ? "Available" : "Restricted"}</dd>
             </div>
           </dl>
         </section>
       ) : (
         <div className="scope-placeholder">
-          Choose a user to apply their database-enforced access scope.
+          Choose a user to apply their role and assigned business area.
         </div>
       )}
 
       <div className="diagnostic-control">
         <div>
           <label htmlFor="diagnostic-sql">Diagnostic SQL</label>
-          <p>Request validated SQL with new answers.</p>
+          <p>Show technical SQL details with new answers.</p>
         </div>
         <input
           id="diagnostic-sql"
@@ -125,7 +125,7 @@ export function UserPanel({
 
       <div className="security-note">
         <span aria-hidden="true">◆</span>
-        <p>Scope is resolved by the backend and enforced again by PostgreSQL RLS.</p>
+        <p>Your role and assigned business area are applied automatically.</p>
       </div>
     </aside>
   );

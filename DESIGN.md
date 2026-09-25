@@ -51,13 +51,15 @@ More detailed component boundaries are documented in `docs/architecture.md`.
 1. The backend resolves the authenticated application user and loads their role and scope from the database.
 2. Deterministic policy code rejects an unauthorized WAC/revenue request before SQL generation.
 3. Relevant schema and business rules are selected from the role-safe domain catalog.
-4. The LLM returns a structured query plan containing metric, dimensions, filters, time period, assumptions, and candidate SQL.
-5. The SQL validator parses the candidate and requires a single read-only `SELECT`, approved relations/functions, role-safe columns, bounded output, and no data-definition or data-modification operations.
-6. The backend chooses the limited or executive database pool from the server-side user record.
-7. Inside one transaction, the executor sets the user context with transaction-local PostgreSQL configuration and runs the validated statement with a timeout.
-8. PostgreSQL RLS independently constrains visible rows. Database privileges independently protect WAC.
-9. The result summarizer receives only the bounded result and approved assumptions, then produces the human-readable response.
-10. The backend records an audit event without storing credentials or unrestricted result data.
+4. The LLM returns a structured query plan containing metric, dimensions, filters, time period, assumptions, an optional geography reference, and candidate SQL.
+5. Deterministic outcome code requests clarification for materially ambiguous geography and blocks explicit out-of-scope territory/region requests. PostgreSQL remains the final authorization boundary.
+6. The SQL validator parses the candidate and requires a single read-only `SELECT`, approved relations/functions, role-safe columns, bounded output, and no data-definition or data-modification operations.
+7. The backend chooses the limited or executive database pool from the server-side user record.
+8. Inside one transaction, the executor sets the user context with transaction-local PostgreSQL configuration and runs the validated statement with a timeout.
+9. PostgreSQL RLS independently constrains visible rows. Database privileges independently protect WAC.
+10. Deterministic outcome code distinguishes meaningful results, no data, timeouts, and other execution failures.
+11. The result summarizer receives only a bounded meaningful result and approved assumptions. A language guard keeps implementation terminology out of the business response.
+12. The backend records an audit event without storing credentials or unrestricted result data.
 
 ## 5. Security design
 
@@ -159,6 +161,7 @@ The test pyramid includes:
 - golden NL-to-SQL cases for metrics, time periods, hierarchy, and follow-ups
 - adversarial cases for prompt injection, cross-territory requests, hidden WAC references, and unsafe SQL
 - full-data query/performance checks against the two-million-row dataset
+- generalized conversation-quality cases for ambiguity, cross-scope requests, no data, execution failures, and business-language responses
 - cloud smoke tests covering EC2, RDS, secrets, migrations, and representative conversations
 
 ## 11. Trade-offs and future improvements

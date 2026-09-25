@@ -17,7 +17,13 @@ export interface ConversationTurn {
   content: string;
 }
 
-export type ChatStatus = "answered" | "denied" | "rejected";
+export type ChatStatus =
+  | "answered"
+  | "clarification"
+  | "no_data"
+  | "denied"
+  | "error"
+  | "rejected";
 export type JsonScalar = string | number | boolean | null;
 
 export interface ChatResponse {
