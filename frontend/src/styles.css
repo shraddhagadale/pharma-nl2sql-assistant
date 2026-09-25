@@ -654,6 +654,22 @@ textarea:disabled {
   border-color: #edcfca;
 }
 
+.retry-button {
+  margin-top: 13px;
+  padding: 8px 12px;
+  color: #7a3333;
+  background: white;
+  border: 1px solid #dfb7b1;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.retry-button:hover:not(:disabled) {
+  background: #fff0ed;
+  border-color: #c9877e;
+}
+
 .answer-text {
   margin: 0;
   color: #283631;

@@ -44,7 +44,6 @@ class MultiDocumentResponses:
             "top accounts pack units",
             "account hierarchy grandparent organization",
             "last quarter period offset",
-            "ranking account analytics",
         )
 
     async def parse(self, **kwargs):
@@ -63,6 +62,16 @@ class MultiDocumentResponses:
                 output_parsed=None,
             )
         return SimpleNamespace(output=[], output_parsed=self.parsed)
+
+
+class DirectPlanResponses:
+    def __init__(self, parsed: AnalyticsPlan) -> None:
+        self.parsed = parsed
+        self.calls: list[dict] = []
+
+    async def parse(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(output=[], output_parsed=self.parsed, id="response-direct")
 
 
 @pytest.mark.asyncio
@@ -120,10 +129,7 @@ async def test_provider_uses_markdown_tools_then_structured_output_without_stora
     assert responses.calls[0]["model"] == "test-model"
     assert responses.calls[0]["reasoning"] == {"effort": "medium"}
     assert responses.calls[0]["text_format"] is AnalyticsPlan
-    assert responses.calls[0]["tool_choice"] == {
-        "type": "function",
-        "name": "search_domain_knowledge",
-    }
+    assert responses.calls[0]["tool_choice"] == "auto"
     assert responses.calls[0]["store"] is False
     assert {tool["name"] for tool in responses.calls[0]["tools"]} == {
         "search_domain_knowledge",
@@ -138,6 +144,7 @@ async def test_provider_uses_markdown_tools_then_structured_output_without_stora
     assert "How much free drug did we provide in the last 4 weeks?" in first_input
     assert "Give me from last week" in first_input
     assert "bounded conversation" in responses.calls[0]["instructions"].casefold()
+    assert "prefetched_domain_knowledge" in first_input
 
 
 @pytest.mark.asyncio
@@ -186,5 +193,56 @@ async def test_provider_allows_multi_document_research_before_final_plan() -> No
     actual = await provider.plan(context)
 
     assert actual == expected
-    assert len(responses.calls) == 5
-    assert all(call["tool_choice"] == "auto" for call in responses.calls[1:])
+    assert len(responses.calls) == 4
+    assert all(call["tool_choice"] == "auto" for call in responses.calls)
+
+
+@pytest.mark.asyncio
+async def test_provider_can_plan_from_prefetched_markdown_in_one_model_round() -> None:
+    knowledge = DomainKnowledgeRepository(PROJECT_ROOT / "docs")
+    question = "Show Zenovax market share for the last 3 months."
+    evidence = knowledge.search(question, limit=4)[0]
+    context = PlanningContext(
+        request_id="request-prefetch",
+        question=question,
+        conversation=[],
+        user=UserContext(
+            user_id="U009",
+            email="ram@example.test",
+            full_name="Test RAM",
+            role=UserRole.RAM,
+            territory_name="New York Metro",
+            region_name="Northeast",
+            can_view_wac=False,
+        ),
+        schema_context=role_safe_schema(UserRole.RAM),
+    )
+    expected = AnalyticsPlan(
+        resolved_question=question,
+        evidence=[{"document": evidence.document, "heading": evidence.heading}],
+        metric_id="market_share",
+        time_window_id="r3m",
+        filters=["Zenovax"],
+        sql="""
+            SELECT SUM(s.pack_units) AS market_share
+            FROM sales AS s
+            WHERE s.drug_name = :product_name
+        """,
+        parameters=[{"name": "product_name", "value": "ZENOVAX"}],
+    )
+    responses = DirectPlanResponses(expected)
+    provider = OpenAIPlanningModel(
+        api_key=SecretStr("test-key"),
+        model="test-model",
+        reasoning_effort="medium",
+        domain_knowledge=knowledge,
+    )
+    provider.client = SimpleNamespace(responses=responses)
+
+    actual = await provider.plan(context)
+
+    assert actual == expected
+    assert len(responses.calls) == 1
+    content = responses.calls[0]["input"][0]["content"]
+    assert evidence.document in content
+    assert evidence.heading in content

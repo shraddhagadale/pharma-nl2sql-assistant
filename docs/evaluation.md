@@ -15,7 +15,8 @@ behavior:
    proxy boundary with injected typed planner results.
 3. **Conversation-quality evaluation** uses generic identities and locations to
    test clarification, access limits, no-data handling, timeout/failure language,
-   and the removal of implementation terminology from user-facing answers.
+   market-share context requirements, and the removal of implementation
+   terminology from user-facing answers.
 4. **Live conversation evaluation** calls the configured remote model through
    the deployed product. It is a configuration-dependent release gate and is
    never replaced by a scripted model while being reported as live.
@@ -42,10 +43,10 @@ document set, retrieval, exact-section reads, digests, and path boundaries.
 
 ## Regression evidence
 
-- Backend: **52 tests passed**, including real local PostgreSQL product-flow
+- Backend: **64 tests passed**, including real local PostgreSQL product-flow
   tests across RAM, director, and executive identities plus generalized
   conversation-outcome and geography-scope coverage.
-- Frontend: type checking and linting passed; **3 component tests passed**; the
+- Frontend: type checking and linting passed; **4 component tests passed**; the
   production Vite build passed.
 - Local containers: database fixture, RLS/WAC security, same-origin frontend,
   CSP headers, sessions, and access-limited response smoke tests passed.
@@ -93,3 +94,6 @@ returned business-language clarifications instead of inventing missing scope.
 - Model quality, retrieval relevance, latency, and repair rate require continued
   live measurement. The deterministic validator and database controls do not
   depend on that outcome.
+- The release proxy permits 55 seconds, while the application fails cleanly at
+  42 seconds. Live latency checks should alert before this safety boundary rather
+  than treating it as the interactive performance target.

@@ -94,6 +94,7 @@ class AnswerSummary(AgentModel):
 
 
 class PlanningContext(AgentModel):
+    request_id: str = ""
     question: str
     conversation: list[ConversationTurn]
     user: UserContext

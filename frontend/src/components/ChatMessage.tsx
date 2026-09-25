@@ -56,7 +56,15 @@ function ResultTable({ message }: { message: AssistantMessage }) {
   );
 }
 
-export function ChatMessage({ message }: { message: Message }) {
+export function ChatMessage({
+  message,
+  disabled = false,
+  onRetry
+}: {
+  message: Message;
+  disabled?: boolean;
+  onRetry?: (message: AssistantMessage) => void;
+}) {
   if (message.role === "user") {
     return (
       <article className="message message-user">
@@ -78,6 +86,16 @@ export function ChatMessage({ message }: { message: Message }) {
       </div>
       <div className="assistant-body">
         <p className="answer-text">{message.content}</p>
+        {message.error && message.retryRequest && onRetry ? (
+          <button
+            type="button"
+            className="retry-button"
+            disabled={disabled}
+            onClick={() => onRetry(message)}
+          >
+            Retry analysis
+          </button>
+        ) : null}
         <ResultTable message={message} />
       </div>
     </article>

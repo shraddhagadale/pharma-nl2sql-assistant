@@ -3,7 +3,8 @@ import type { ApiErrorBody, ChatRequest, ChatResponse, UserContext } from "./typ
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    readonly requestId: string | null
   ) {
     super(message);
     this.name = "ApiError";
@@ -28,7 +29,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // Keep the safe generic message when the server does not return JSON.
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, response.headers.get("X-Request-ID"));
   }
 
   if (response.status === 204) return undefined as T;

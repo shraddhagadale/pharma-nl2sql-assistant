@@ -43,9 +43,10 @@ without pretending that NL-to-SQL inference is available.
 2. The backend supplies the bounded conversation, database-backed user context,
    and role-safe schema to the planning model. A role claimed in chat is never
    authoritative.
-3. The model must call `search_domain_knowledge` before producing a query plan.
-   It may call `read_domain_section` when a result needs more detail. Both tools
-   read only the approved local Markdown corpus.
+3. The backend deterministically prefetches the four best-matching Markdown
+   sections before the first model call. The model may call
+   `search_domain_knowledge` or `read_domain_section` when those sections are
+   insufficient. Both tools read only the approved local Markdown corpus.
 4. The model resolves short follow-ups into a standalone business question,
    including follow-ups to a timed-out request, and grounds its interpretation in
    the retrieved sections.
@@ -73,6 +74,9 @@ without pretending that NL-to-SQL inference is available.
 12. The model summarizes only a bounded meaningful result. A language guard
     replaces technical summaries, and a deterministic conversational fallback
     keeps the result table available if summarization fails.
+13. The complete request has a 42-second application deadline inside the
+    55-second proxy deadline. Summarization has its own six-second budget and
+    falls back without discarding validated results.
 
 The model never receives a generic database execution tool. This avoids a path
 where prompt text could bypass validation or where model-selected credentials
@@ -96,6 +100,9 @@ Configuration:
 PHARMA_OPENAI_API_KEY=
 PHARMA_OPENAI_MODEL=gpt-5.6-sol
 PHARMA_OPENAI_REASONING_EFFORT=medium
+PHARMA_OPENAI_REQUEST_TIMEOUT_SECONDS=20
+PHARMA_AGENT_REQUEST_TIMEOUT_SECONDS=42
+PHARMA_AGENT_SUMMARY_TIMEOUT_SECONDS=6
 PHARMA_AGENT_MAX_REPAIRS=1
 PHARMA_AGENT_MAX_ROWS=100
 ```
@@ -123,6 +130,9 @@ The validator enforces:
 The validator returns normalized SQL, bound values, referenced objects, the row
 limit, and a SHA-256 SQL fingerprint. Audit logs contain the fingerprint and
 outcome, not raw prompts, SQL parameter values, credentials, or result rows.
+Market-share plans must also contain an explicit product or therapeutic-market
+filter, or group by a product/market dimension. Otherwise the workflow requests
+clarification before execution rather than combining unrelated markets.
 
 ## Local verification
 

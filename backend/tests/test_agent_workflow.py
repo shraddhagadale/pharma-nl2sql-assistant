@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.agent.models import AnalyticsPlan, AnswerSummary, QueryResult
@@ -73,6 +75,12 @@ class FakeModel:
         return AnswerSummary(answer="Paid demand is 42 units.", notes=[])
 
 
+class SlowSummaryModel(FakeModel):
+    async def summarize(self, context, current_plan, result):
+        await asyncio.sleep(0.05)
+        return await super().summarize(context, current_plan, result)
+
+
 class StubExecutor:
     def __init__(self) -> None:
         self.calls = 0
@@ -82,13 +90,20 @@ class StubExecutor:
         return QueryResult(columns=["paid_demand"], rows=[{"paid_demand": "42"}])
 
 
-def workflow(model, executor, *, max_repairs: int = 1) -> AgentWorkflow:
+def workflow(
+    model,
+    executor,
+    *,
+    max_repairs: int = 1,
+    summary_timeout_seconds: float = 6.0,
+) -> AgentWorkflow:
     return AgentWorkflow(
         model=model,
         validator=SqlValidator(max_rows=100),
         executor=executor,
         audit=AuditLogger(),
         max_repairs=max_repairs,
+        summary_timeout_seconds=summary_timeout_seconds,
     )
 
 
@@ -179,6 +194,28 @@ async def test_summary_failure_returns_validated_table_fallback() -> None:
         "Paid demand excludes free drug.",
         "Showing company-wide results.",
     ]
+
+
+@pytest.mark.asyncio
+async def test_summary_timeout_keeps_validated_result_table() -> None:
+    model = SlowSummaryModel(initial=plan())
+    executor = StubExecutor()
+
+    result = await workflow(
+        model,
+        executor,
+        summary_timeout_seconds=0.01,
+    ).run(
+        question="Show paid demand for the last 3 months",
+        conversation=[],
+        user=user(UserRole.EXEC),
+        include_sql=False,
+        request_id="request-summary-timeout",
+    )
+
+    assert result.status is ChatStatus.ANSWERED
+    assert result.answer == "I found the requested information and included it below."
+    assert result.rows == [{"paid_demand": "42"}]
 
 
 @pytest.mark.asyncio

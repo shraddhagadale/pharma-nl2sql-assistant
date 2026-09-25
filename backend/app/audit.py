@@ -15,6 +15,9 @@ class AuditEvent:
     error_code: str | None = None
     sql_fingerprint: str | None = None
     repair_count: int | None = None
+    planning_ms: float | None = None
+    execution_ms: float | None = None
+    summary_ms: float | None = None
 
 
 class AuditLogger:

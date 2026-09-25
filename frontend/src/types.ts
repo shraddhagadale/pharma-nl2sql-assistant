@@ -58,6 +58,7 @@ export interface AssistantMessage {
   content: string;
   response?: ChatResponse;
   error?: boolean;
+  retryRequest?: ChatRequest;
 }
 
 export type ChatMessage = UserMessage | AssistantMessage;

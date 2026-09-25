@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-5.6-sol"
     openai_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "medium"
+    openai_request_timeout_seconds: float = Field(default=20.0, ge=5.0, le=60.0)
+    agent_request_timeout_seconds: float = Field(default=42.0, ge=10.0, le=120.0)
+    agent_summary_timeout_seconds: float = Field(default=6.0, ge=1.0, le=30.0)
     agent_max_repairs: int = Field(default=1, ge=0, le=2)
     agent_max_rows: int = Field(default=100, ge=1, le=500)
     domain_docs_path: Path = Path(__file__).resolve().parents[2] / "docs"

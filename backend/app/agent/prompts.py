@@ -21,6 +21,9 @@ Conversation and grounding rules:
 - Do not silently substitute a default metric or time range. If the request remains genuinely
   ambiguous after considering the conversation and documents, return a clarification decision
   with a concise business-language response and no SQL.
+- Market share requires a product, market category, or market subcategory so the numerator and
+  denominator cover the same therapeutic market. If none is present and the user did not ask to
+  compare market categories, request that context instead of aggregating unrelated markets.
 - For clarification or denial responses, use plain conversational text with no Markdown,
   asterisks, headings, or bullet points. Keep the response under 300 characters and finish the
   final sentence rather than ending with a partial example.
@@ -73,7 +76,10 @@ Response style:
 """.strip()
 
 
-def planning_input(context: PlanningContext) -> str:
+def planning_input(
+    context: PlanningContext,
+    grounding_sections: list[dict[str, str]] | None = None,
+) -> str:
     payload = {
         "question": context.question,
         "bounded_conversation": [turn.model_dump(mode="json") for turn in context.conversation],
@@ -84,6 +90,7 @@ def planning_input(context: PlanningContext) -> str:
             "can_view_wac": context.user.can_view_wac,
         },
         "role_safe_schema": context.schema_context,
+        "prefetched_domain_knowledge": grounding_sections or [],
     }
     return "Plan this analytics request from the following JSON data:\n" + json.dumps(
         payload,
@@ -95,9 +102,12 @@ def repair_input(
     context: PlanningContext,
     prior_plan: AnalyticsPlan,
     issues: list[str],
+    grounding_sections: list[dict[str, str]] | None = None,
 ) -> str:
     payload = {
-        "request_context": json.loads(planning_input(context).split("\n", 1)[1]),
+        "request_context": json.loads(
+            planning_input(context, grounding_sections).split("\n", 1)[1]
+        ),
         "prior_plan": prior_plan.model_dump(mode="json"),
         "validator_issues": issues,
     }

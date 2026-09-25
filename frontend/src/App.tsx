@@ -44,6 +44,9 @@ function safeErrorMessage(error: unknown): string {
       return "The analytics assistant is temporarily unavailable. Please try again later.";
     }
     if (error.status === 401) return "Your demo session expired. Select a user and try again.";
+    if (error.status === 502 || error.status === 504) {
+      return "That analysis took longer than expected. Retry the same request when you're ready.";
+    }
     return error.message;
   }
   return "The analytics service could not be reached. Please try again.";
@@ -51,6 +54,7 @@ function safeErrorMessage(error: unknown): string {
 
 function conversationFrom(messages: Message[]): ConversationTurn[] {
   return messages
+    .filter((message) => !(message.role === "assistant" && message.error))
     .map((message): ConversationTurn => ({
       role: message.role,
       content: message.content.slice(0, 1_000)
@@ -124,12 +128,14 @@ export function App() {
     setSending(true);
     setBannerError(null);
 
+    const request = {
+      question: content,
+      conversation: priorConversation,
+      include_sql: false
+    };
+
     try {
-      const response = await sendChat({
-        question: content,
-        conversation: priorConversation,
-        include_sql: false
-      });
+      const response = await sendChat(request);
       setMessages((current) => [
         ...current,
         {
@@ -146,9 +152,42 @@ export function App() {
           id: nextMessageId(),
           role: "assistant",
           content: safeErrorMessage(error),
-          error: true
+          error: true,
+          retryRequest: request
         }
       ]);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function retryQuestion(message: Extract<Message, { role: "assistant" }>) {
+    if (!message.retryRequest || sending) return;
+    setSending(true);
+    setBannerError(null);
+
+    try {
+      const response = await sendChat(message.retryRequest);
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === message.id
+            ? {
+                id: item.id,
+                role: "assistant" as const,
+                content: response.answer,
+                response
+              }
+            : item
+        )
+      );
+    } catch (error) {
+      setMessages((current) =>
+        current.map((item) =>
+          item.id === message.id && item.role === "assistant"
+            ? { ...item, content: safeErrorMessage(error), error: true }
+            : item
+        )
+      );
     } finally {
       setSending(false);
     }
@@ -226,7 +265,14 @@ export function App() {
             </div>
           ) : (
             <div className="message-list" aria-live="polite">
-              {messages.map((message) => <ChatMessage key={message.id} message={message} />)}
+              {messages.map((message) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  disabled={sending}
+                  onRetry={(failed) => void retryQuestion(failed)}
+                />
+              ))}
               {sending ? (
                 <div className="thinking" role="status">
                   <span /><span /><span />

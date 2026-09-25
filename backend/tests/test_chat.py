@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from app.agent.models import AnalyticsPlan, AnswerSummary
@@ -42,6 +44,12 @@ class FakePlanningModel:
     async def summarize(self, context, plan, result):
         value = result.rows[0]["pack_units"] if result.rows else "0"
         return AnswerSummary(answer=f"ZENOVAX paid demand is {value} pack units.", notes=[])
+
+
+class SlowPlanningModel(FakePlanningModel):
+    async def plan(self, context):
+        await asyncio.sleep(0.05)
+        return await super().plan(context)
 
 
 def login(client: TestClient, user_id: str) -> None:
@@ -102,3 +110,20 @@ def test_chat_denies_ram_pricing_from_grounded_agent_decision(settings):
     assert body["rows"] == []
     assert body["sql"] is None
     assert model.plan_calls == 1
+
+
+def test_chat_returns_structured_timeout_before_the_proxy_deadline(settings):
+    timeout_settings = settings.model_copy(update={"agent_request_timeout_seconds": 0.01})
+    with TestClient(create_app(timeout_settings, SlowPlanningModel())) as client:
+        login(client, "U009")
+        response = client.post(
+            "/api/v1/chat",
+            json={"question": "Show paid demand for the last 3 months"},
+            headers={"X-Request-ID": "gateway-request-123"},
+        )
+
+    assert response.status_code == 504
+    assert response.headers["X-Request-ID"] == "gateway-request-123"
+    assert response.json() == {
+        "detail": ("This analysis is taking longer than expected. Please retry the same request.")
+    }

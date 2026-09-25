@@ -46,6 +46,8 @@ class Services:
                 geography=GeographyScopeRepository(pools),
                 audit=audit,
                 max_repairs=settings.agent_max_repairs,
+                request_timeout_seconds=settings.agent_request_timeout_seconds,
+                summary_timeout_seconds=settings.agent_summary_timeout_seconds,
             ),
             audit=audit,
         )
@@ -62,4 +64,5 @@ class Services:
             model=settings.openai_model,
             reasoning_effort=settings.openai_reasoning_effort,
             domain_knowledge=domain_knowledge,
+            request_timeout_seconds=settings.openai_request_timeout_seconds,
         )

@@ -20,6 +20,9 @@ Public demo: [http://100.28.234.67](http://100.28.234.67)
   role passwords, the session secret, and an optional model API key. Terraform
   owns the secret metadata but does not place secret values in state.
 - Systems Manager performs deployment; inbound SSH is not allowed.
+- Backend and Nginx container stdout is sent directly to separate streams in
+  the application CloudWatch log group. Entries include request IDs and bounded
+  stage or proxy timings, but not prompts, SQL parameters, or result values.
 - GitHub Actions assumes a least-privilege AWS role through OIDC; no long-lived
   AWS access key is stored in GitHub.
 

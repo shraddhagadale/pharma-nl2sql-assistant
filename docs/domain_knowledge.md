@@ -25,14 +25,18 @@ from model retrieval.
 Each approved document is divided into heading-bounded sections. The in-memory
 search index scores normalized query terms using heading matches, section term
 frequency, inverse section frequency, and exact-phrase matches. The corpus is
-small enough that this requires no vector database or external service.
+small enough that this requires no vector database or external service. The
+backend prefetches the four best sections from the current question and recent
+user turns so straightforward requests do not require an extra model/tool
+round trip.
 
 The model receives two bounded function tools:
 
 - `search_domain_knowledge(query, limit)` returns at most six relevant sections.
 - `read_domain_section(document, heading)` returns one exact approved section.
 
-Every result contains the document name, heading, content, and SHA-256 digest.
+Every prefetched or tool-returned result contains the document name, heading,
+content, and SHA-256 digest.
 Paths outside the allowlisted corpus and unknown headings fail closed.
 
 ## Planner contract

@@ -134,22 +134,46 @@ def test_market_share_formula_and_zero_denominator_are_accepted() -> None:
                 WHERE s.data_source = 'distributor'
                   AND s.brand_flag = 1
                   AND s.mo_offset IN (0, 1, 2)
+                  AND p.market_subcategory = :market_subcategory
             ), denominator AS (
                 SELECT SUM(s.pack_units * p.unit_conversion_factor) AS equivalents
                 FROM sales AS s
                 JOIN products AS p ON p.ndc = s.ndc
                 WHERE s.data_source = 'market_data'
                   AND s.mo_offset IN (0, 1, 2)
+                  AND p.market_subcategory = :market_subcategory
             )
             SELECT n.equivalents / NULLIF(d.equivalents, 0) AS market_share
             FROM numerator AS n
             JOIN denominator AS d ON TRUE
         """,
+        parameters=[
+            QueryParameter(name="market_subcategory", value="Docetaxel"),
+        ],
     )
 
     validated = validate(candidate)
 
     assert validated.referenced_tables == ("products", "sales")
+
+
+def test_market_share_grouped_by_market_category_is_accepted() -> None:
+    candidate = plan(
+        metric_id="market_share",
+        time_window_id="r3m",
+        dimension_ids=["market_category"],
+        sql="""
+            SELECT p.market_category,
+                   SUM(s.pack_units * p.unit_conversion_factor) AS equivalents
+            FROM sales AS s
+            JOIN products AS p ON p.ndc = s.ndc
+            WHERE s.data_source = 'market_data'
+              AND s.mo_offset IN (0, 1, 2)
+            GROUP BY p.market_category
+        """,
+    )
+
+    assert validate(candidate).row_limit == 100
 
 
 def test_equivalents_with_bounded_join_is_accepted() -> None:

@@ -242,3 +242,39 @@ async def test_unknown_product_gets_clarification_instead_of_zero() -> None:
         "I couldn't find MoonCure in the documented product portfolio. "
         "Please check the product name or ask about another product."
     )
+
+
+@pytest.mark.asyncio
+async def test_market_share_without_product_or_market_requests_context() -> None:
+    market_share = AnalyticsPlan(
+        metric_id="market_share",
+        time_window_id="r3m",
+        dimension_ids=["territory"],
+        filters=[],
+        sql="""
+            WITH nova AS (
+              SELECT SUM(s.pack_units * p.unit_conversion_factor) AS equivalents
+              FROM sales AS s
+              JOIN products AS p ON p.ndc = s.ndc
+              WHERE s.data_source = 'distributor'
+                AND s.brand_flag = 1
+                AND s.mo_offset IN (0, 1, 2)
+            ), market AS (
+              SELECT SUM(s.pack_units * p.unit_conversion_factor) AS equivalents
+              FROM sales AS s
+              JOIN products AS p ON p.ndc = s.ndc
+              WHERE s.data_source = 'market_data'
+                AND s.mo_offset IN (0, 1, 2)
+            )
+            SELECT nova.equivalents / NULLIF(market.equivalents, 0) AS market_share
+            FROM nova
+            CROSS JOIN market
+        """,
+    )
+    executor = QualityExecutor()
+
+    response = await run(QualityModel(market_share), executor)
+
+    assert response.status is ChatStatus.CLARIFICATION
+    assert response.answer == "Which product or therapeutic market should I use for market share?"
+    assert executor.calls == 0

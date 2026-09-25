@@ -179,6 +179,9 @@ PHARMA_COOKIE_SECURE=false
 PHARMA_OPENAI_API_KEY=$openai_api_key
 PHARMA_OPENAI_MODEL=gpt-5.6-sol
 PHARMA_OPENAI_REASONING_EFFORT=medium
+PHARMA_OPENAI_REQUEST_TIMEOUT_SECONDS=20
+PHARMA_AGENT_REQUEST_TIMEOUT_SECONDS=42
+PHARMA_AGENT_SUMMARY_TIMEOUT_SECONDS=6
 PHARMA_AGENT_MAX_REPAIRS=1
 PHARMA_AGENT_MAX_ROWS=100
 ENVFILE
@@ -198,6 +201,10 @@ docker run --detach \
     --network "$network_name" \
     --network-alias backend \
     --restart unless-stopped \
+    --log-driver awslogs \
+    --log-opt "awslogs-region=$AWS_REGION" \
+    --log-opt "awslogs-group=$LOG_GROUP_NAME" \
+    --log-opt "awslogs-stream=$backend_container" \
     --env-file "$app_dir/backend.env" \
     pharma-backend:latest >/dev/null
 
@@ -220,6 +227,10 @@ docker run --detach \
     --name "$frontend_container" \
     --network "$network_name" \
     --restart unless-stopped \
+    --log-driver awslogs \
+    --log-opt "awslogs-region=$AWS_REGION" \
+    --log-opt "awslogs-group=$LOG_GROUP_NAME" \
+    --log-opt "awslogs-stream=$frontend_container" \
     --publish 80:80 \
     pharma-frontend:latest >/dev/null
 

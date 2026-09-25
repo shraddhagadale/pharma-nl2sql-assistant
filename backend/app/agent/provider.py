@@ -1,4 +1,6 @@
 import json
+import logging
+from time import perf_counter
 from typing import Protocol
 
 from openai import AsyncOpenAI, OpenAIError
@@ -21,7 +23,10 @@ from app.agent.prompts import (
 )
 from app.domain.knowledge import DomainKnowledgeError, DomainKnowledgeRepository
 
-MAX_DOMAIN_TOOL_CALLS = 6
+MAX_DOMAIN_TOOL_CALLS = 3
+PREFETCHED_DOMAIN_SECTIONS = 4
+
+logger = logging.getLogger("pharma.model")
 
 
 class PlanningModelError(RuntimeError):
@@ -75,10 +80,11 @@ class OpenAIPlanningModel:
         model: str,
         reasoning_effort: str,
         domain_knowledge: DomainKnowledgeRepository,
+        request_timeout_seconds: float = 20.0,
     ) -> None:
         self.client = AsyncOpenAI(
             api_key=api_key.get_secret_value(),
-            timeout=30.0,
+            timeout=request_timeout_seconds,
             max_retries=1,
         )
         self.model = model
@@ -86,9 +92,13 @@ class OpenAIPlanningModel:
         self.domain_knowledge = domain_knowledge
 
     async def plan(self, context: PlanningContext) -> AnalyticsPlan:
+        grounding = self._prefetch_grounding(context)
         return await self._parse_with_domain_tools(
             instructions=PLANNER_INSTRUCTIONS,
-            content=planning_input(context),
+            content=planning_input(context, grounding),
+            context=context,
+            grounding=grounding,
+            operation="plan",
         )
 
     async def repair(
@@ -97,9 +107,13 @@ class OpenAIPlanningModel:
         prior_plan: AnalyticsPlan,
         issues: list[str],
     ) -> AnalyticsPlan:
+        grounding = self._prefetch_grounding(context)
         return await self._parse_with_domain_tools(
             instructions=f"{PLANNER_INSTRUCTIONS}\n\n{REPAIR_INSTRUCTIONS}",
-            content=repair_input(context, prior_plan, issues),
+            content=repair_input(context, prior_plan, issues, grounding),
+            context=context,
+            grounding=grounding,
+            operation="repair",
         )
 
     async def summarize(
@@ -112,9 +126,20 @@ class OpenAIPlanningModel:
             instructions=SUMMARY_INSTRUCTIONS,
             content=summary_input(context, plan, result),
             output_type=AnswerSummary,
+            request_id=context.request_id,
+            operation="summarize",
         )
 
-    async def _parse(self, *, instructions: str, content: str, output_type):
+    async def _parse(
+        self,
+        *,
+        instructions: str,
+        content: str,
+        output_type,
+        request_id: str,
+        operation: str,
+    ):
+        started = perf_counter()
         try:
             response = await self.client.responses.parse(
                 model=self.model,
@@ -126,7 +151,24 @@ class OpenAIPlanningModel:
                 store=False,
             )
         except OpenAIError as error:
+            self._log_model_call(
+                request_id=request_id,
+                operation=operation,
+                round_number=1,
+                started=started,
+                outcome="error",
+                error_type=type(error).__name__,
+            )
             raise PlanningModelError("The model request failed") from error
+
+        self._log_model_call(
+            request_id=request_id,
+            operation=operation,
+            round_number=1,
+            started=started,
+            outcome="success",
+            response_id=getattr(response, "id", None),
+        )
 
         parsed = response.output_parsed
         if parsed is None:
@@ -138,23 +180,23 @@ class OpenAIPlanningModel:
         *,
         instructions: str,
         content: str,
+        context: PlanningContext,
+        grounding: list[dict[str, str]],
+        operation: str,
     ) -> AnalyticsPlan:
         input_items: list[object] = [{"role": "user", "content": content}]
-        observed_sections: set[tuple[str, str]] = set()
+        observed_sections = {(section["document"], section["heading"]) for section in grounding}
         tool_calls_used = 0
 
         for response_round in range(MAX_DOMAIN_TOOL_CALLS + 1):
+            started = perf_counter()
             try:
                 response = await self.client.responses.parse(
                     model=self.model,
                     instructions=instructions,
                     input=input_items,
                     tools=self.domain_knowledge.tool_definitions,
-                    tool_choice=(
-                        {"type": "function", "name": "search_domain_knowledge"}
-                        if response_round == 0
-                        else "auto"
-                    ),
+                    tool_choice="auto",
                     parallel_tool_calls=False,
                     text_format=AnalyticsPlan,
                     reasoning={"effort": self.reasoning_effort},
@@ -162,7 +204,24 @@ class OpenAIPlanningModel:
                     store=False,
                 )
             except OpenAIError as error:
+                self._log_model_call(
+                    request_id=context.request_id,
+                    operation=operation,
+                    round_number=response_round + 1,
+                    started=started,
+                    outcome="error",
+                    error_type=type(error).__name__,
+                )
                 raise PlanningModelError("The model request failed") from error
+
+            self._log_model_call(
+                request_id=context.request_id,
+                operation=operation,
+                round_number=response_round + 1,
+                started=started,
+                outcome="success",
+                response_id=getattr(response, "id", None),
+            )
 
             tool_calls = [item for item in response.output if item.type == "function_call"]
             if not tool_calls:
@@ -198,6 +257,46 @@ class OpenAIPlanningModel:
                     }
                 )
         raise PlanningModelError("The model did not return a final analytics plan")
+
+    def _prefetch_grounding(self, context: PlanningContext) -> list[dict[str, str]]:
+        recent_user_turns = [
+            turn.content for turn in context.conversation if turn.role.value == "user"
+        ][-4:]
+        query = " ".join([*recent_user_turns, context.question])
+        return [
+            section.as_result()
+            for section in self.domain_knowledge.search(
+                query,
+                limit=PREFETCHED_DOMAIN_SECTIONS,
+            )
+        ]
+
+    @staticmethod
+    def _log_model_call(
+        *,
+        request_id: str,
+        operation: str,
+        round_number: int,
+        started: float,
+        outcome: str,
+        response_id: str | None = None,
+        error_type: str | None = None,
+    ) -> None:
+        logger.info(
+            json.dumps(
+                {
+                    "request_id": request_id,
+                    "action": "model.response",
+                    "operation": operation,
+                    "round": round_number,
+                    "outcome": outcome,
+                    "duration_ms": round((perf_counter() - started) * 1_000, 3),
+                    "response_id": response_id,
+                    "error_type": error_type,
+                },
+                sort_keys=True,
+            )
+        )
 
     @staticmethod
     def _record_observed_sections(

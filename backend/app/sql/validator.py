@@ -52,6 +52,10 @@ class SqlValidationError(ValueError):
         super().__init__("SQL validation failed: " + "; ".join(self.issues))
 
 
+class MissingMarketContextError(SqlValidationError):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class ValidatedQuery:
     sql: str
@@ -90,6 +94,10 @@ class SqlValidator:
             raise SqlValidationError(issues or ["SQL is empty"])
 
         tree = statements[0]
+        if self._is_market_share(plan.metric_id) and not self._has_market_context(tree):
+            raise MissingMarketContextError(
+                ["market share requires a product or therapeutic-market context"]
+            )
         if not isinstance(tree, exp.Select):
             issues.append("only SELECT statements are allowed")
         for node_type in DISALLOWED_NODES:
@@ -212,6 +220,24 @@ class SqlValidator:
                 column_name = next(iter(product_columns))
                 lookups.update((column_name, name) for name in placeholders)
         return tuple(sorted(lookups))
+
+    @staticmethod
+    def _is_market_share(metric_id: str) -> bool:
+        return re.sub(r"[^a-z0-9]+", "_", metric_id.casefold()).strip("_") == "market_share"
+
+    @staticmethod
+    def _has_market_context(tree: exp.Expression) -> bool:
+        context_columns = {"drug_name", "ndc", "market_category", "market_subcategory"}
+
+        for comparison in (*tree.find_all(exp.EQ), *tree.find_all(exp.In)):
+            if any(column.name in context_columns for column in comparison.find_all(exp.Column)):
+                if any(comparison.find_all(exp.Placeholder)):
+                    return True
+
+        for group in tree.find_all(exp.Group):
+            if any(column.name in context_columns for column in group.find_all(exp.Column)):
+                return True
+        return False
 
     def _enforce_limit(self, tree: exp.Select, issues: list[str]) -> int:
         limit = tree.args.get("limit")

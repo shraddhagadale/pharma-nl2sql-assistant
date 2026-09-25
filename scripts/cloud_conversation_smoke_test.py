@@ -84,6 +84,13 @@ def run(base_url: str) -> None:
     assert paid_demand["status"] == "answered", paid_demand
     assert paid_demand["rows"], paid_demand
 
+    incomplete_market_share = ask(
+        ram, base_url, "Show market share by territory for the last 3 months."
+    )
+    assert incomplete_market_share["status"] == "clarification", incomplete_market_share
+    assert not incomplete_market_share["rows"], incomplete_market_share
+    assert incomplete_market_share["sql"] is None, incomplete_market_share
+
     director = login(base_url, "U003")
     accounts = ask(
         director, base_url, "Rank the top 10 accounts by pack units last quarter."
@@ -125,8 +132,9 @@ def run(base_url: str) -> None:
     assert market_share["status"] == "answered", market_share
 
     print(
-        "Cloud conversation gate passed: RAM denial and paid demand, director top "
-        "accounts and marker-free follow-up, executive revenue, and market share."
+        "Cloud conversation gate passed: RAM denial, paid demand, and market-share "
+        "clarification; director top accounts and marker-free follow-up; executive "
+        "revenue and product-specific market share."
     )
 
 
