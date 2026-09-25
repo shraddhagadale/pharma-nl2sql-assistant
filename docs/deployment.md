@@ -63,8 +63,7 @@ Successful deployment command: `ccb258d9-633f-40ac-9637-487fb4f17110`.
 
 - Dataset checksums and exact full-data counts passed.
 - `/health` and `/ready` passed through the public proxy.
-- Static UI, CSP/security headers, session cookies, and pre-model pricing denial
-  passed at the public URL.
+- Static UI, CSP/security headers, and session cookies passed at the public URL.
 - Anonymous analytics access, unknown users, and a client-supplied role were
   rejected.
 - For the same three-month overview, RLS exposed 1,706 organizations to RAM
@@ -78,17 +77,16 @@ not inside, the bulk-load transaction. Plain Docker also required the explicit
 back; the second run completed the full data load before the container-start
 failure, and the final run reused that validated state.
 
-## Model secret boundary
+## Model runtime secret
 
-No `PHARMA_OPENAI_API_KEY` was available during deployment. Health, sessions,
-RLS-backed predefined analytics, and deterministic authorization denials are
-live. Ordinary conversational analytics correctly return a safe HTTP 503 until
-an `openai_api_key` field is added to the application runtime secret and the
-release is rerun.
+The application reads `openai_api_key` from the existing Secrets Manager JSON
+and never includes it in an image or repository file. If the field is absent,
+health, sessions, and predefined RLS-backed analytics remain available while
+model-dependent chat returns a safe HTTP 503.
 
 Do not paste an API key into Git, Terraform variables, shell history, or chat.
-Add it to the existing Secrets Manager JSON through a secure AWS console or
-credential-management workflow, then run `./scripts/deploy_aws.sh` again.
+Manage it through a secure AWS console or credential-management workflow, then
+run `./scripts/deploy_aws.sh` again when the runtime value or application changes.
 
 ## Teardown and cost
 

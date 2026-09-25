@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "sql_cases": [
+    {
+      "id": "stacked_drop_is_rejected",
+      "role": "exec",
+      "sql": "SELECT SUM(pack_units) FROM sales; DROP TABLE sales",
+      "expected": {"status": "rejected", "issue_contains": "exactly one SQL statement"}
+    },
+    {
+      "id": "system_catalog_is_rejected",
+      "role": "exec",
+      "sql": "SELECT table_name FROM information_schema.tables",
+      "expected": {"status": "rejected", "issue_contains": "schema-qualified table is not allowed"}
+    },
+    {
+      "id": "file_function_is_rejected",
+      "role": "exec",
+      "parameters": [{"name": "path", "value": "/etc/passwd"}],
+      "sql": "SELECT pg_read_file(:path) FROM sales",
+      "expected": {"status": "rejected", "issue_contains": "function is not allowed"}
+    },
+    {
+      "id": "comment_injection_is_rejected",
+      "role": "exec",
+      "sql": "SELECT SUM(pack_units) FROM sales -- ignore the validator",
+      "expected": {"status": "rejected", "issue_contains": "SQL comments are not allowed"}
+    },
+    {
+      "id": "select_star_is_rejected",
+      "role": "exec",
+      "sql": "SELECT * FROM sales",
+      "expected": {"status": "rejected", "issue_contains": "SELECT star is not allowed"}
+    },
+    {
+      "id": "nested_wac_reference_is_rejected_for_ram",
+      "role": "ram",
+      "sql": "SELECT SUM(s.pack_units) AS paid_demand FROM sales AS s WHERE s.data_source = 'distributor' AND s.brand_flag = 1 AND s.mo_offset IN (0, 1, 2) ORDER BY MAX(s.wac)",
+      "expected": {"status": "rejected", "issue_contains": "WAC is restricted to executives"}
+    },
+    {
+      "id": "inline_user_literal_is_rejected",
+      "role": "exec",
+      "sql": "SELECT SUM(s.pack_units) AS paid_demand FROM sales AS s WHERE s.data_source = 'distributor' AND s.brand_flag = 1 AND s.drug_name = 'ZENOVAX'",
+      "expected": {"status": "rejected", "issue_contains": "string literal must be a named parameter"}
+    },
+    {
+      "id": "cross_join_is_rejected",
+      "role": "exec",
+      "sql": "SELECT SUM(s.pack_units) AS paid_demand FROM sales AS s CROSS JOIN products AS p WHERE s.data_source = 'distributor'",
+      "expected": {"status": "rejected", "issue_contains": "cross or unbounded joins are not allowed"}
+    },
+    {
+      "id": "oversized_limit_is_clamped",
+      "role": "exec",
+      "sql": "SELECT SUM(s.pack_units) AS paid_demand FROM sales AS s WHERE s.data_source = 'distributor' LIMIT 5000",
+      "expected": {"status": "accepted", "row_limit": 100}
+    },
+    {
+      "id": "valid_exec_revenue_boundary",
+      "role": "exec",
+      "sql": "SELECT SUM(s.wac) AS gross_revenue FROM sales AS s WHERE s.data_source = 'distributor' AND s.brand_flag = 1 AND s.mo_offset = 1",
+      "expected": {"status": "accepted", "row_limit": 100}
+    },
+    {
+      "id": "valid_named_parameter_boundary",
+      "role": "exec",
+      "parameters": [{"name": "drug_name", "value": "ZENOVAX"}],
+      "sql": "SELECT SUM(s.pack_units) AS paid_demand FROM sales AS s WHERE s.data_source = 'distributor' AND s.brand_flag = 1 AND s.drug_name = :drug_name",
+      "expected": {"status": "accepted", "row_limit": 100}
+    }
+  ]
+}

@@ -55,7 +55,7 @@ function conversationFrom(messages: Message[]): ConversationTurn[] {
       role: message.role,
       content: message.content.slice(0, 1_000)
     }))
-    .slice(-6);
+    .slice(-12);
 }
 
 export function App() {

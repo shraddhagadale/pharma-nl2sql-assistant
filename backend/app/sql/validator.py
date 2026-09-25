@@ -1,14 +1,11 @@
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Any
 
 from sqlglot import exp, parse
 from sqlglot.errors import ParseError
 
 from app.agent.models import AnalyticsPlan, ParameterValue
-from app.domain.models import DomainCatalog, FilterOperator, FilterRule, JoinRule
-from app.domain.selector import DomainSelection
 from app.models import UserRole
 from app.sql.schema import ANALYTICS_SCHEMA, role_safe_schema
 
@@ -74,10 +71,8 @@ class SqlValidator:
         plan: AnalyticsPlan,
         *,
         role: UserRole,
-        catalog: DomainCatalog,
-        selection: DomainSelection,
     ) -> ValidatedQuery:
-        issues = self._plan_alignment_issues(plan, selection)
+        issues: list[str] = []
         sql = plan.sql.strip()
         if COMMENT_MARKERS.search(sql):
             issues.append("SQL comments are not allowed")
@@ -184,7 +179,6 @@ class SqlValidator:
             if literal.is_string and literal.this not in ALLOWED_STRING_LITERALS:
                 issues.append(f"string literal must be a named parameter: {literal.this[:40]}")
 
-        issues.extend(self._business_rule_issues(tree, catalog, selection))
         row_limit = self._enforce_limit(tree, issues)
 
         if issues:
@@ -200,196 +194,6 @@ class SqlValidator:
             referenced_columns=tuple(sorted(columns)),
             row_limit=row_limit,
         )
-
-    @staticmethod
-    def _plan_alignment_issues(
-        plan: AnalyticsPlan,
-        selection: DomainSelection,
-    ) -> list[str]:
-        issues: list[str] = []
-        if plan.metric_id not in selection.metric_ids:
-            issues.append(f"plan metric must be {selection.metric_ids[0]}")
-        if plan.time_window_id != selection.time_window_id:
-            issues.append(f"plan time window must be {selection.time_window_id}")
-        if set(plan.comparison_time_window_ids) != set(selection.comparison_time_window_ids):
-            issues.append("plan comparison time windows must exactly match the selection")
-        if set(plan.dimension_ids) != set(selection.dimension_ids):
-            issues.append("plan dimensions must exactly match the deterministic selection")
-        return issues
-
-    def _business_rule_issues(
-        self,
-        tree: exp.Select,
-        catalog: DomainCatalog,
-        selection: DomainSelection,
-    ) -> list[str]:
-        issues: list[str] = []
-        metric = catalog.metrics_by_id[selection.metric_ids[0]]
-        columns = {column.name for column in tree.find_all(exp.Column)}
-
-        required_fields: set[str] = set()
-        required_filters = [*metric.filters]
-        required_joins = [*metric.joins]
-        if metric.field:
-            required_fields.add(metric.field.split(".", 1)[1])
-        if metric.expression:
-            required_fields.update(field.split(".", 1)[1] for field in metric.expression.fields)
-        for component in (metric.numerator, metric.denominator):
-            if component:
-                required_filters.extend(component.filters)
-                component_metric = catalog.metrics_by_id[component.metric]
-                if component_metric.expression:
-                    required_fields.update(
-                        field.split(".", 1)[1] for field in component_metric.expression.fields
-                    )
-                required_joins.extend(component_metric.joins)
-
-        for field in sorted(required_fields):
-            if field not in columns:
-                issues.append(f"metric {metric.id} requires column {field}")
-        for filter_rule in required_filters:
-            if not self._has_filter(tree, filter_rule):
-                issues.append(
-                    f"metric {metric.id} requires filter {filter_rule.field} "
-                    f"{filter_rule.operator.value} {filter_rule.value}"
-                )
-
-        for data_source_id in selection.data_source_ids:
-            data_source = catalog.data_sources_by_id[data_source_id]
-            rule = FilterRule(
-                field="sales.data_source",
-                operator=FilterOperator.EQ,
-                value=data_source.value,
-            )
-            if not self._has_filter(tree, rule):
-                issues.append(
-                    f"selected data source {data_source_id} requires "
-                    f"sales.data_source = {data_source.value}"
-                )
-
-        for window_id in [selection.time_window_id, *selection.comparison_time_window_ids]:
-            window = catalog.time_windows_by_id[window_id]
-            required_occurrences = 2 if metric.kind.value == "ratio" else 1
-            if self._filter_count(tree, window.filter) < required_occurrences:
-                issues.append(
-                    f"time window {window.id} requires {window.filter.field} "
-                    f"{window.filter.operator.value} {window.filter.value} in each metric component"
-                )
-
-        for dimension_id in selection.dimension_ids:
-            dimension = catalog.dimensions_by_id[dimension_id]
-            required_joins.extend(dimension.joins)
-            for field in dimension.expression.fields:
-                column_name = field.split(".", 1)[1]
-                if column_name not in columns:
-                    issues.append(f"dimension {dimension_id} requires column {column_name}")
-
-        for join_rule in required_joins:
-            if not self._has_join(tree, join_rule):
-                issues.append(f"required join is missing: {join_rule.left} = {join_rule.right}")
-
-        if metric.kind.value == "ratio":
-            if tree.find(exp.Div) is None:
-                issues.append(f"ratio metric {metric.id} requires division")
-            if metric.zero_denominator == "null" and not (
-                tree.find(exp.Nullif) or tree.find(exp.Case)
-            ):
-                issues.append(f"ratio metric {metric.id} requires a NULL zero denominator")
-        return issues
-
-    @staticmethod
-    def _has_filter(tree: exp.Select, rule: FilterRule) -> bool:
-        return SqlValidator._filter_count(tree, rule) > 0
-
-    @staticmethod
-    def _filter_count(tree: exp.Select, rule: FilterRule) -> int:
-        column_name = rule.field.split(".", 1)[1]
-        expected = rule.value if isinstance(rule.value, list) else [rule.value]
-        matches = 0
-
-        if rule.operator.value == "eq":
-            for node in tree.find_all(exp.EQ):
-                if (
-                    SqlValidator._column_name(node.this) == column_name
-                    and SqlValidator._values(node.expression) == expected
-                ):
-                    matches += 1
-        elif rule.operator.value == "lte":
-            for node in tree.find_all(exp.LTE):
-                if (
-                    SqlValidator._column_name(node.this) == column_name
-                    and SqlValidator._values(node.expression) == expected
-                ):
-                    matches += 1
-        elif rule.operator.value == "in":
-            for node in tree.find_all(exp.In):
-                if SqlValidator._column_name(node.this) == column_name:
-                    values = [SqlValidator._literal_value(item) for item in node.expressions]
-                    if values == expected:
-                        matches += 1
-        elif rule.operator.value == "between":
-            for node in tree.find_all(exp.Between):
-                if SqlValidator._column_name(node.this) == column_name:
-                    values = [
-                        SqlValidator._literal_value(node.args["low"]),
-                        SqlValidator._literal_value(node.args["high"]),
-                    ]
-                    if values == expected:
-                        matches += 1
-        return matches
-
-    @staticmethod
-    def _has_join(tree: exp.Select, rule: JoinRule) -> bool:
-        aliases = {
-            table.alias_or_name: table.name
-            for table in tree.find_all(exp.Table)
-            if not table.db and not table.catalog
-        }
-        left_table, left_column = rule.left.split(".", 1)
-        right_table, right_column = rule.right.split(".", 1)
-        required = {(left_table, left_column), (right_table, right_column)}
-
-        for join in tree.find_all(exp.Join):
-            condition = join.args.get("on")
-            if condition is None:
-                continue
-            equalities = (
-                [condition] if isinstance(condition, exp.EQ) else condition.find_all(exp.EQ)
-            )
-            for equality in equalities:
-                if not isinstance(equality.this, exp.Column) or not isinstance(
-                    equality.expression, exp.Column
-                ):
-                    continue
-                actual = {
-                    (aliases.get(column.table, column.table), column.name)
-                    for column in (equality.this, equality.expression)
-                }
-                if actual == required:
-                    return True
-        return False
-
-    @staticmethod
-    def _column_name(node: exp.Expression) -> str | None:
-        return node.name if isinstance(node, exp.Column) else None
-
-    @staticmethod
-    def _values(node: exp.Expression) -> list[Any]:
-        return [SqlValidator._literal_value(node)]
-
-    @staticmethod
-    def _literal_value(node: exp.Expression) -> Any:
-        if not isinstance(node, exp.Literal):
-            return None
-        if node.is_string:
-            return node.this
-        try:
-            return int(node.this)
-        except ValueError:
-            try:
-                return float(node.this)
-            except ValueError:
-                return node.this
 
     def _enforce_limit(self, tree: exp.Select, issues: list[str]) -> int:
         limit = tree.args.get("limit")

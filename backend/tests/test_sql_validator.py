@@ -1,19 +1,9 @@
-from pathlib import Path
-
 import pytest
 
 from app.agent.models import AnalyticsPlan, QueryParameter
-from app.domain.catalog import CatalogRepository
-from app.domain.selector import DomainRuleSelector
 from app.models import UserRole
 from app.sql.validator import SqlValidationError, SqlValidator
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CATALOG = CatalogRepository.load(
-    PROJECT_ROOT / "domain" / "domain_catalog.yaml",
-    project_root=PROJECT_ROOT,
-)
-SELECTOR = DomainRuleSelector(CATALOG)
 VALIDATOR = SqlValidator(max_rows=100)
 
 
@@ -41,15 +31,11 @@ def plan(
 def validate(
     candidate: AnalyticsPlan,
     *,
-    question: str,
     role: UserRole = UserRole.EXEC,
 ):
-    selection = SELECTOR.select(question, role=role)
     return VALIDATOR.validate(
         candidate,
         role=role,
-        catalog=CATALOG,
-        selection=selection,
     )
 
 
@@ -66,7 +52,7 @@ def test_valid_paid_demand_gets_bounded_and_fingerprinted() -> None:
         """,
     )
 
-    validated = validate(candidate, question="Show paid demand for the last 3 months")
+    validated = validate(candidate)
 
     assert validated.row_limit == 100
     assert validated.sql.endswith("LIMIT 100")
@@ -89,7 +75,7 @@ def test_user_filter_requires_and_preserves_named_parameter() -> None:
         parameters=[QueryParameter(name="drug_name", value="ZENOVAX")],
     )
 
-    validated = validate(candidate, question="Show paid demand for the last 3 months")
+    validated = validate(candidate)
 
     assert "%(drug_name)s" in validated.sql
     assert validated.parameters == {"drug_name": "ZENOVAX"}
@@ -108,13 +94,9 @@ def test_exec_revenue_is_allowed_and_limited_role_wac_is_rejected() -> None:
         """,
     )
 
-    assert validate(candidate, question="Gross revenue last month").row_limit == 100
+    assert validate(candidate).row_limit == 100
     with pytest.raises(SqlValidationError, match="WAC is restricted"):
-        validate(
-            candidate,
-            question="Gross revenue last month",
-            role=UserRole.RAM,
-        )
+        validate(candidate, role=UserRole.RAM)
 
 
 def test_market_share_formula_and_zero_denominator_are_accepted() -> None:
@@ -142,12 +124,12 @@ def test_market_share_formula_and_zero_denominator_are_accepted() -> None:
         """,
     )
 
-    validated = validate(candidate, question="Show market share for the last 3 months")
+    validated = validate(candidate)
 
     assert validated.referenced_tables == ("products", "sales")
 
 
-def test_equivalents_requires_the_catalog_join_and_data_source() -> None:
+def test_equivalents_with_bounded_join_is_accepted() -> None:
     valid = plan(
         metric_id="equivalents",
         time_window_id="r3m",
@@ -160,22 +142,7 @@ def test_equivalents_requires_the_catalog_join_and_data_source() -> None:
         """,
     )
 
-    assert validate(valid, question="Show equivalents for R3M").row_limit == 100
-
-    wrong_join = plan(
-        metric_id="equivalents",
-        time_window_id="r3m",
-        sql="""
-            SELECT SUM(s.pack_units * p.unit_conversion_factor) AS equivalents
-            FROM sales AS s
-            JOIN products AS p ON p.brand_flag = s.brand_flag
-            WHERE s.data_source = 'distributor'
-              AND s.mo_offset IN (0, 1, 2)
-        """,
-    )
-
-    with pytest.raises(SqlValidationError, match="required join is missing"):
-        validate(wrong_join, question="Show equivalents for R3M")
+    assert validate(valid).row_limit == 100
 
 
 @pytest.mark.parametrize(
@@ -215,10 +182,10 @@ def test_unsafe_sql_is_rejected(sql: str, message: str) -> None:
     candidate = plan(metric_id="paid_demand", time_window_id="r3m", sql=sql)
 
     with pytest.raises(SqlValidationError, match=message):
-        validate(candidate, question="Show paid demand for the last 3 months")
+        validate(candidate)
 
 
-def test_wrong_business_window_and_inline_user_literal_are_rejected() -> None:
+def test_inline_user_literal_is_rejected_without_reinterpreting_time_semantics() -> None:
     candidate = plan(
         metric_id="paid_demand",
         time_window_id="r3m",
@@ -233,9 +200,8 @@ def test_wrong_business_window_and_inline_user_literal_are_rejected() -> None:
     )
 
     with pytest.raises(SqlValidationError) as error:
-        validate(candidate, question="Show paid demand for the last 3 months")
+        validate(candidate)
 
-    assert any("time window r3m requires" in issue for issue in error.value.issues)
     assert any("string literal must be a named parameter" in issue for issue in error.value.issues)
 
 
@@ -257,15 +223,12 @@ def test_time_comparison_requires_both_documented_windows() -> None:
         """,
     )
 
-    validated = validate(
-        candidate,
-        question="Compare paid demand for R3M versus prior R3M.",
-    )
+    validated = validate(candidate)
 
     assert "r3m_paid_demand" in validated.sql
 
 
-def test_time_comparison_rejects_a_missing_comparison_predicate() -> None:
+def test_validator_does_not_reinterpret_document_grounded_business_semantics() -> None:
     candidate = plan(
         metric_id="paid_demand",
         time_window_id="prior_r3m",
@@ -279,10 +242,4 @@ def test_time_comparison_rejects_a_missing_comparison_predicate() -> None:
         """,
     )
 
-    with pytest.raises(SqlValidationError) as error:
-        validate(
-            candidate,
-            question="Compare paid demand for R3M versus prior R3M.",
-        )
-
-    assert any("time window r3m requires" in issue for issue in error.value.issues)
+    assert validate(candidate).row_limit == 100

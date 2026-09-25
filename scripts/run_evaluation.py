@@ -14,7 +14,7 @@ from app.evaluation import run_evaluation
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run versioned domain-selection and SQL-policy evaluations"
+        description="Run the versioned SQL-policy evaluation"
     )
     parser.add_argument(
         "--json", action="store_true", help="print the complete JSON report"

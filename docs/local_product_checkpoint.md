@@ -18,20 +18,21 @@ remote inference test.
 
 ## Verified behaviors
 
-- The complete backend suite passes with 51 tests, and the frontend suite passes
+- The complete backend suite passes with 52 tests, and the frontend suite passes
   type checking, linting, 3 component tests, and a production build.
 - RAM, director, and executive users receive strictly increasing paid-demand
   scope for the same validated SQL because PostgreSQL applies their territory,
   region, or global access.
-- A RAM pricing question is denied before the planning model is called.
+- An injected grounded planner decision denies a RAM pricing question without
+  executing SQL, while the validator and database independently reject WAC.
 - An executive can execute a validated gross-revenue query containing WAC.
 - A director can receive ranked grandparent-account results.
-- A follow-up can inherit the paid-demand metric while explicitly comparing R3M
-  and prior R3M using both documented predicates.
+- The complete recent conversation is delivered to the planner so follow-ups can
+  preserve the prior metric while changing the requested period.
 - The frontend renders the user scope, table results, assumptions, diagnostic
   SQL, and the safe model-unavailable state.
-- The container endpoint supplies CSP and other security headers, proxies the
-  signed session on one origin, and preserves the pre-model pricing denial.
+- The container endpoint supplies CSP and other security headers and proxies the
+  signed session on one origin.
 - Database, security, and frontend smoke scripts pass against the rebuilt
   three-service Docker Compose stack.
 

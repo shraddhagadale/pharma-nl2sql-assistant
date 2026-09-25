@@ -14,7 +14,7 @@ flowchart LR
     UI --> API[FastAPI backend]
     API --> AUTH[Session and user context]
     API --> AGENT[NL-to-SQL workflow]
-    AGENT --> DOMAIN[Curated domain catalog]
+    AGENT --> DOMAIN[Markdown knowledge tools]
     AGENT --> LLM[LLM API]
     AGENT --> VALIDATOR[SQL AST and policy validator]
     VALIDATOR --> EXECUTOR[Role-aware query executor]
@@ -49,9 +49,9 @@ More detailed component boundaries are documented in `docs/architecture.md`.
 ## 4. Request flow
 
 1. The backend resolves the authenticated application user and loads their role and scope from the database.
-2. Deterministic policy code rejects an unauthorized WAC/revenue request before SQL generation.
-3. Relevant schema and business rules are selected from the role-safe domain catalog.
-4. The LLM returns a structured query plan containing metric, dimensions, filters, time period, assumptions, an optional geography reference, and candidate SQL.
+2. The backend supplies the authenticated role, authorized scope, recent conversation, and role-safe schema to the planner; conversation text cannot override those values.
+3. The planner searches and reads the authoritative Markdown business documents through bounded local tools, resolves the current turn in conversation context, and cites the sections it used.
+4. The LLM returns a structured decision: a grounded query plan, a concise clarification, or an access-limited response. Query plans contain the resolved question, business labels, evidence, assumptions, an optional geography reference, named parameters, and candidate SQL.
 5. Deterministic outcome code requests clarification for materially ambiguous geography and blocks explicit out-of-scope territory/region requests. PostgreSQL remains the final authorization boundary.
 6. The SQL validator parses the candidate and requires a single read-only `SELECT`, approved relations/functions, role-safe columns, bounded output, and no data-definition or data-modification operations.
 7. The backend chooses the limited or executive database pool from the server-side user record.
@@ -103,19 +103,26 @@ The backend selects a pool only after resolving the user from the server-side se
 
 ## 6. Domain knowledge
 
-The supplied Markdown documents remain the human-readable source of truth. A curated `domain_catalog.yaml` will compile the operational subset needed by the agent:
+The supplied Markdown documents are both the human-readable and runtime source
+of truth. At startup, the backend parses the eight domain documents into
+heading-bounded sections and builds a small in-memory lexical index. The model
+can call `search_domain_knowledge` and `read_domain_section` to retrieve:
 
 - metric formulas and required filters
 - period semantics
 - organization hierarchy defaults
 - product and market classification rules
-- synonyms
-- security flags such as `requires_wac`
-- provenance pointing to the source Markdown file and section
+- data-source and security semantics
+- exact source document, heading, and content digest
 
-This is intentionally not an open-ended document-QA step for SQL-defining rules. A validation script will ensure source references exist, required fields are present, SQL fragments use valid schema objects, and golden examples still match. Documentation changes therefore produce a visible catalog/test failure instead of silently drifting.
+The plan cites only sections returned by those tools. The provider rejects a
+query plan without evidence or with invented citations. Documentation updates
+therefore become available after the next application start or deployment,
+without a second catalog regeneration step.
 
-No vector database is planned for the first version because the source corpus is small, curated, and security-critical. Deterministic selection from structured rules is easier to test and review.
+No vector database is used because the source corpus is small and curated.
+SQL structure, role-visible columns, RLS, WAC grants, timeouts, and result bounds
+remain deterministic even though business-language interpretation is agentic.
 
 ## 7. Business defaults
 
@@ -148,7 +155,9 @@ For a production pharmaceutical workload, the preferred design would use dedicat
 - Organization scope is derived by joining organization ZIP to `zip_territory`.
 - Revenue uses distributor data only; hub dispense represents free drug and has zero WAC.
 - The current generator appears to create `market_data` rows from competitor products only, while the business documentation describes market data as the total-market denominator. We will not silently rewrite historical source data. The domain formula follows the documentation, and data-quality tests will surface this synthetic-data limitation. Any later generator correction will be a documented, separately reviewed change.
-- Ambiguous questions use documented defaults and expose the assumption in the response; materially ambiguous or unsafe questions fail closed.
+- The planner uses the conversation and retrieved documents to resolve ordinary
+  shorthand. It must request clarification rather than silently substituting an
+  unrelated metric or time period.
 
 ## 10. Testing strategy
 
@@ -156,9 +165,9 @@ Testing happens locally after every meaningful phase. Cloud deployment happens a
 
 The test pyramid includes:
 
-- unit tests for domain-rule selection, plan schemas, and SQL policy checks
+- unit tests for Markdown retrieval, tool/citation boundaries, plan schemas, and SQL policy checks
 - PostgreSQL integration tests for all role/scope combinations and WAC denial
-- golden NL-to-SQL cases for metrics, time periods, hierarchy, and follow-ups
+- live grounded NL-to-SQL cases for metrics, time periods, hierarchy, and follow-ups
 - adversarial cases for prompt injection, cross-territory requests, hidden WAC references, and unsafe SQL
 - full-data query/performance checks against the two-million-row dataset
 - generalized conversation-quality cases for ambiguity, cross-scope requests, no data, execution failures, and business-language responses
@@ -168,10 +177,12 @@ The test pyramid includes:
 
 - A single EC2 host is appropriate for a demo but is not highly available. Production would use a load-balanced, autoscaled container platform.
 - Demo user selection is transparent for evaluation but is not production authentication.
-- A curated catalog adds review work, but it provides provenance and deterministic tests for security-critical business rules.
+- Direct Markdown retrieval removes the duplicated catalog and broadens language
+  coverage, but domain-interpretation quality now requires model-backed evaluations.
 - The first agent is an explicit workflow rather than a general-purpose agent framework, reducing hidden behavior and dependency surface.
-- Full conversation memory will be bounded and represented as structured context to prevent old instructions from overriding current security rules.
-- Future improvements include SSO, asynchronous evaluation pipelines, query-cost estimation, approval workflows for sensitive exports, richer observability, and automated catalog-diff review.
+- Recent conversation memory is bounded; a production version should add a
+  server-owned rolling summary for longer threads without treating it as authority.
+- Future improvements include SSO, asynchronous evaluation pipelines, query-cost estimation, approval workflows for sensitive exports, and richer observability.
 
 ## 12. Delivery cadence
 

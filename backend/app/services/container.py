@@ -11,7 +11,7 @@ from app.config import Settings
 from app.db.geography import GeographyScopeRepository
 from app.db.pools import DatabasePools
 from app.db.users import UserRepository
-from app.domain.catalog import CatalogRepository
+from app.domain.knowledge import DomainKnowledgeRepository
 from app.services.analytics import AnalyticsService
 from app.sql.executor import QueryExecutor
 from app.sql.validator import SqlValidator
@@ -33,14 +33,13 @@ class Services:
     ) -> "Services":
         pools = DatabasePools(settings)
         audit = AuditLogger()
-        catalog = CatalogRepository.load(settings.domain_catalog_path)
-        model = planning_model or cls._default_model(settings)
+        domain_knowledge = DomainKnowledgeRepository(settings.domain_docs_path)
+        model = planning_model or cls._default_model(settings, domain_knowledge)
         return cls(
             pools=pools,
             users=UserRepository(pools),
             analytics=AnalyticsService(pools, audit),
             agent=AgentWorkflow(
-                catalog=catalog,
                 model=model,
                 validator=SqlValidator(max_rows=settings.agent_max_rows),
                 executor=QueryExecutor(pools),
@@ -52,11 +51,15 @@ class Services:
         )
 
     @staticmethod
-    def _default_model(settings: Settings) -> PlanningModel:
+    def _default_model(
+        settings: Settings,
+        domain_knowledge: DomainKnowledgeRepository,
+    ) -> PlanningModel:
         if settings.openai_api_key is None:
             return UnavailablePlanningModel()
         return OpenAIPlanningModel(
             api_key=settings.openai_api_key,
             model=settings.openai_model,
             reasoning_effort=settings.openai_reasoning_effort,
+            domain_knowledge=domain_knowledge,
         )

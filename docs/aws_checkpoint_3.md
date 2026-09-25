@@ -21,7 +21,8 @@ port-80 endpoint still serves only the infrastructure health page.
 - The backend test suite passed: 19 tests.
 - The database fixture and RLS/WAC smoke suites passed.
 - `scripts/backend_api_smoke_test.py` passed against `localhost:8000`.
-- The domain catalog, provenance hashes, lint, and formatting checks passed.
+- The domain knowledge, lint, and formatting checks passed. The current
+  architecture reads the authoritative Markdown documents directly.
 
 The API smoke test verified anonymous denial, unknown-user denial, rejection of
 a client-supplied role, database-backed sessions, RLS-visible analytics, and

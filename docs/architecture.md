@@ -8,11 +8,11 @@ Browser
   v
 FastAPI boundary
   |-- resolves user identity and server-side role
-  |-- blocks unauthorized intent
-  |-- selects role-safe schema/domain context
+  |-- supplies role-safe schema and bounded conversation
   v
 LLM boundary
-  |-- returns structured plan and candidate SQL
+  |-- searches authoritative Markdown through local tools
+  |-- returns a grounded decision and candidate SQL
   |-- has no database credentials or network path to PostgreSQL
   v
 Deterministic SQL boundary
@@ -37,8 +37,8 @@ The browser, the natural-language input, and every LLM output are untrusted. The
 | React UI | Demo login, chat input, loading state, answer/table rendering, assumption and error display | Decide access scope or execute SQL |
 | FastAPI routes | Validate API shape, resolve session, invoke workflow, shape response | Trust role fields from the browser |
 | User-context service | Load role/territory/region/WAC flags from PostgreSQL | Infer permissions from natural language |
-| Domain service | Return the smallest relevant set of versioned business rules with provenance | Perform open-ended web or document retrieval |
-| Planner | Convert a question and bounded conversation state into a typed analytics plan | Authorize the request |
+| Domain knowledge service | Search/read approved Markdown sections with provenance | Access the web, database, or arbitrary files |
+| Planner | Resolve conversation context, retrieve domain evidence, and return a typed decision or analytics plan | Authorize database access or execute SQL |
 | SQL generator | Produce PostgreSQL SQL from the approved plan and role-safe context | Execute SQL |
 | SQL validator | Parse and enforce statement, relation, column, function, row-limit, and role rules | Replace database RLS |
 | Query executor | Set transaction-local identity, select DB pool, apply timeout, return bounded rows | Repair or reinterpret SQL |
@@ -51,10 +51,12 @@ The browser, the natural-language input, and every LLM output are untrusted. The
 ```mermaid
 stateDiagram-v2
     [*] --> ResolveUser
-    ResolveUser --> ClassifyIntent
-    ClassifyIntent --> Denied: forbidden WAC or revenue
-    ClassifyIntent --> RetrieveRules: allowed analytics intent
-    RetrieveRules --> BuildPlan
+    ResolveUser --> SearchDocuments
+    SearchDocuments --> ReadSection: more context needed
+    ReadSection --> SearchDocuments
+    SearchDocuments --> BuildPlan
+    BuildPlan --> Denied: unavailable to authenticated role
+    BuildPlan --> Clarification: unresolved material ambiguity
     BuildPlan --> GenerateSQL
     GenerateSQL --> ValidateSQL
     ValidateSQL --> RepairSQL: repairable validation error
@@ -64,6 +66,7 @@ stateDiagram-v2
     ExecuteSQL --> Summarize
     Summarize --> [*]
     Denied --> [*]
+    Clarification --> [*]
     Rejected --> [*]
 ```
 
@@ -76,15 +79,13 @@ backend/
   app/
     api/              HTTP routes and dependencies
     agent/            workflow, prompts, and typed plans
-    domain/           catalog loader and rule selection
+    domain/           Markdown parsing and bounded knowledge tools
     security/         user context and policy decisions
     sql/              validator and executor
     db/               engine/session configuration
   tests/
 frontend/
   src/
-domain/
-  domain_catalog.yaml
 infra/
   terraform/
 schema/

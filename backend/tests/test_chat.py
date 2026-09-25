@@ -10,6 +10,14 @@ class FakePlanningModel:
 
     async def plan(self, context):
         self.plan_calls += 1
+        if "pricing" in context.question.casefold() and not context.user.can_view_wac:
+            return AnalyticsPlan(
+                decision="denied",
+                response=(
+                    "Revenue in dollars is available only to executives. "
+                    "I can show paid demand instead."
+                ),
+            )
         return AnalyticsPlan(
             metric_id="paid_demand",
             time_window_id="r3m",
@@ -79,7 +87,7 @@ def test_chat_executes_validated_parameterized_sql_with_rls(settings):
     assert model.plan_calls == 1
 
 
-def test_chat_denies_ram_pricing_without_calling_model(settings):
+def test_chat_denies_ram_pricing_from_grounded_agent_decision(settings):
     model = FakePlanningModel()
     with TestClient(create_app(settings, model)) as client:
         login(client, "U009")
@@ -93,4 +101,4 @@ def test_chat_denies_ram_pricing_without_calling_model(settings):
     assert body["status"] == "denied"
     assert body["rows"] == []
     assert body["sql"] is None
-    assert model.plan_calls == 0
+    assert model.plan_calls == 1

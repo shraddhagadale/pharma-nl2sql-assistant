@@ -1,6 +1,5 @@
-"""Deterministic pharmaceutical domain catalog."""
+"""Searchable pharmaceutical domain knowledge."""
 
-from app.domain.catalog import CatalogRepository, CatalogValidationError
-from app.domain.selector import DomainRuleSelector
+from app.domain.knowledge import DomainKnowledgeError, DomainKnowledgeRepository
 
-__all__ = ["CatalogRepository", "CatalogValidationError", "DomainRuleSelector"]
+__all__ = ["DomainKnowledgeError", "DomainKnowledgeRepository"]

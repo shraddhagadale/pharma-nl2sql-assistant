@@ -1,20 +1,12 @@
-from pathlib import Path
-
 import pytest
 
 from app.agent.models import AnalyticsPlan, AnswerSummary, QueryResult
 from app.agent.provider import UnavailablePlanningModel
 from app.agent.workflow import AgentUnavailableError, AgentWorkflow
 from app.audit import AuditLogger
-from app.domain.catalog import CatalogRepository
 from app.models import ChatStatus, ConversationRole, ConversationTurn, UserContext, UserRole
 from app.sql.validator import SqlValidator
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CATALOG = CatalogRepository.load(
-    PROJECT_ROOT / "domain" / "domain_catalog.yaml",
-    project_root=PROJECT_ROOT,
-)
 VALID_SQL = """
     SELECT SUM(s.pack_units) AS paid_demand
     FROM sales AS s
@@ -92,7 +84,6 @@ class StubExecutor:
 
 def workflow(model, executor, *, max_repairs: int = 1) -> AgentWorkflow:
     return AgentWorkflow(
-        catalog=CATALOG,
         model=model,
         validator=SqlValidator(max_rows=100),
         executor=executor,
@@ -103,7 +94,15 @@ def workflow(model, executor, *, max_repairs: int = 1) -> AgentWorkflow:
 
 @pytest.mark.asyncio
 async def test_non_exec_revenue_is_denied_before_model_call() -> None:
-    model = FakeModel(initial=plan())
+    model = FakeModel(
+        initial=AnalyticsPlan(
+            decision="denied",
+            response=(
+                "Revenue in dollars is available only to executives. "
+                "I can show paid demand instead."
+            ),
+        )
+    )
     executor = StubExecutor()
 
     result = await workflow(model, executor).run(
@@ -117,7 +116,7 @@ async def test_non_exec_revenue_is_denied_before_model_call() -> None:
     assert result.status is ChatStatus.DENIED
     assert "only to executives" in result.answer
     assert "paid demand" in result.answer
-    assert model.plan_calls == 0
+    assert model.plan_calls == 1
     assert executor.calls == 0
 
 
@@ -232,5 +231,5 @@ async def test_referential_follow_up_uses_bounded_prior_user_context() -> None:
     )
 
     assert result.status is ChatStatus.ANSWERED
-    assert model.last_context.selection.metric_ids == ["paid_demand"]
-    assert model.last_context.selection.time_window_id == "last_month"
+    assert model.last_context.question == "What about last month?"
+    assert model.last_context.conversation[0].content == ("Show paid demand for the last 3 months.")

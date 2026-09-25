@@ -62,13 +62,13 @@ Deploy the base infrastructure and verify EC2 reachability, RDS availability, EC
 
 Commit: `backend: add role-scoped query executor`
 
-## Phase 6 — Deterministic domain layer
+## Phase 6 — Markdown domain knowledge layer
 
-- Add `domain/domain_catalog.yaml` with source provenance.
-- Add the catalog loader and validator.
-- Add initial golden business examples.
+- Treat the supplied Markdown documents as the runtime source of truth.
+- Parse documents into searchable sections with source provenance.
+- Expose bounded search/read tools to the planning model.
 
-Commit: `domain: add catalog-backed business rules`
+Commit: `domain: add markdown knowledge tools`
 
 ## Checkpoint 3 — Secure backend gate
 

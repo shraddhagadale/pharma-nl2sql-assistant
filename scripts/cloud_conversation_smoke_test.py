@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -57,6 +58,8 @@ def ask(
     base_url: str,
     question: str,
     conversation: list[dict[str, str]] | None = None,
+    *,
+    include_sql: bool = False,
 ) -> dict[str, Any]:
     return request_json(
         opener,
@@ -64,7 +67,7 @@ def ask(
         payload={
             "question": question,
             "conversation": conversation or [],
-            "include_sql": False,
+            "include_sql": include_sql,
         },
     )
 
@@ -85,16 +88,20 @@ def run(base_url: str) -> None:
     assert accounts["status"] == "answered"
     assert accounts["rows"]
 
+    prior = ask(director, base_url, "Show paid demand for the last 3 months.")
     follow_up = ask(
         director,
         base_url,
-        "What about last month?",
+        "Give me from last month instead.",
         conversation=[
             {"role": "user", "content": "Show paid demand for the last 3 months."},
-            {"role": "assistant", "content": "The validated result was returned."},
+            {"role": "assistant", "content": prior["answer"]},
         ],
+        include_sql=True,
     )
     assert follow_up["status"] == "answered"
+    assert follow_up["sql"]
+    assert re.search(r"(?:\b\w+\.)?mo_offset\s*=\s*1\b", follow_up["sql"].casefold())
 
     executive = login(base_url, "U001")
     revenue = ask(executive, base_url, "Show gross revenue last month.")
@@ -106,7 +113,7 @@ def run(base_url: str) -> None:
 
     print(
         "Cloud conversation gate passed: RAM denial and paid demand, director top "
-        "accounts and follow-up, executive revenue, and market share."
+        "accounts and marker-free follow-up, executive revenue, and market share."
     )
 
 

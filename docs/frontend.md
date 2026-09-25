@@ -13,7 +13,7 @@ context and PostgreSQL enforces row and column access.
    and WAC access displayed in the UI come from the server response.
 3. Role-aware starter questions make demand, market-share, comparison, account,
    and pricing behavior easy to demonstrate.
-4. The composer sends the question and at most six prior user/assistant turns.
+4. The composer sends the question and at most twelve prior user/assistant turns.
 5. Answers render as plain text plus an optional bounded table. Model output is
    never inserted as HTML.
 6. Assumptions and database scope are visible in a disclosure. Validated SQL is

@@ -7,7 +7,6 @@ WORKDIR /app/backend
 
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
-COPY domain /app/domain
 COPY docs /app/docs
 COPY schema/migrations/001_initial.sql /app/schema/migrations/001_initial.sql
 

@@ -18,7 +18,7 @@ decision after model output.
 }
 ```
 
-The optional conversation is limited to six turns of 1,000 characters each;
+The optional conversation is limited to twelve turns of 1,000 characters each;
 the current question is limited to 2,000 characters. SQL is omitted unless the
 caller intentionally sets `include_sql` to `true`.
 
@@ -28,7 +28,7 @@ outcome from technical text:
 - `answered`: the requested business result is available
 - `clarification`: a material ambiguity must be resolved before execution
 - `no_data`: execution succeeded but no meaningful value was available in scope
-- `denied`: deterministic role policy rejected the business request
+- `denied`: the grounded planner identified data unavailable to the authenticated role
 - `error`: execution timed out or failed after validation
 - `rejected`: generated SQL did not pass validation
 
@@ -40,24 +40,30 @@ without pretending that NL-to-SQL inference is available.
 
 1. The signed session resolves a fresh user, role, region, territory, and WAC
    flag from PostgreSQL.
-2. The deterministic domain selector maps business phrases to catalog metrics,
-   time windows, comparison windows, dimensions, and data sources.
-3. Unauthorized WAC/revenue requests are denied before a model call.
-4. The backend sends only the role-safe schema and the selected catalog rules to
-   the planning model.
-5. The model returns a Pydantic `AnalyticsPlan`: selected IDs, explanations,
-   an optional structured geography reference, named parameters, and one
+2. The backend supplies the bounded conversation, database-backed user context,
+   and role-safe schema to the planning model. A role claimed in chat is never
+   authoritative.
+3. The model must call `search_domain_knowledge` before producing a query plan.
+   It may call `read_domain_section` when a result needs more detail. Both tools
+   read only the approved local Markdown corpus.
+4. The model resolves short follow-ups into a standalone business question,
+   including follow-ups to a timed-out request, and grounds its interpretation in
+   the retrieved sections.
+5. The model returns a Pydantic `AnalyticsPlan` with a query, clarification, or
+   denied decision. Query plans include the resolved question, document evidence,
+   business labels, assumptions, optional geography, named parameters, and one
    candidate PostgreSQL query.
 6. Code classifies ambiguous city references and compares explicit city/state,
    ZIP, territory, and region references with the user's assigned scope before
    analytics execution. PostgreSQL RLS remains the final boundary if a reference
    is absent or misclassified.
-7. `sqlglot` parses the SQL. Deterministic checks require the plan to match the
-   selected domain rules and allow only one bounded read-only query over the
-   approved schema.
+7. `sqlglot` parses the SQL. Deterministic checks allow only one bounded read-only
+   query over the approved role-safe schema. The validator does not reinterpret
+   the document-grounded business request.
 8. One repair attempt is allowed by default. The model receives validator
-   issues but cannot change the selected metric, periods, dimensions, or role
-   schema. A second invalid result fails closed.
+   issues and may consult the Markdown tools again, but it cannot change the
+   authenticated role or broaden geographic scope. A second invalid result fails
+   closed.
 9. The executor chooses the limited or executive pool from the database-backed
    user, starts a read-only transaction, sets `app.user_id` locally, and runs
    only the validated parameterized SQL.
@@ -75,7 +81,9 @@ could broaden access.
 ## Model integration
 
 The default provider uses the OpenAI Responses API through backend Python code.
-Planning, repair, and summarization each use Pydantic Structured Outputs. The
+Planning uses a bounded Responses API function-calling loop followed by Pydantic
+Structured Outputs. Repair uses the same document tools, while summarization
+uses Structured Outputs without tools. The
 default model is `gpt-5.6-sol`, configurable through
 `PHARMA_OPENAI_MODEL`. Its reasoning effort defaults to `medium` and is
 configurable through `PHARMA_OPENAI_REASONING_EFFORT`. The provider can be
@@ -94,6 +102,7 @@ PHARMA_AGENT_MAX_ROWS=100
 
 The key is server-only and must not be committed or sent by a browser. The
 implementation follows the OpenAI
+[Function calling guide](https://developers.openai.com/api/docs/guides/function-calling),
 [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs)
 and uses a model that supports the Responses API and Structured Outputs, as
 listed on the [GPT-5.6 Sol model page](https://developers.openai.com/api/docs/models/gpt-5.6-sol).
@@ -108,9 +117,6 @@ The validator enforces:
   locks, grants, external access, or system/user tables
 - exact agreement between typed plan parameters and SQL placeholders
 - named parameters for user-derived string values
-- catalog-required metric fields, data-source filters, time predicates,
-  dimensions, ratio division, and zero-denominator handling
-- every selected period predicate for a time comparison
 - forced or clamped outer `LIMIT`
 - WAC rejection for every non-executive SQL expression
 
@@ -131,9 +137,10 @@ cd backend
 ```
 
 The tests use injected fake planning models, so they verify the complete
-selection-validation-execution-response path without spending API tokens or
-depending on a remote model. A live conversational smoke test additionally
-requires `PHARMA_OPENAI_API_KEY`.
+planning-validation-execution-response path without spending API tokens or
+depending on a remote model. Separate tests verify Markdown loading, ranking,
+exact-section reads, tool boundaries, and citation handoff. A live conversational
+smoke test additionally requires `PHARMA_OPENAI_API_KEY`.
 
 The conversation-quality suite uses generic users and locations rather than
 hard-coding one demo identity. It covers ambiguous geography, cross-scope

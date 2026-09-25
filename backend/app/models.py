@@ -56,7 +56,7 @@ class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question: str = Field(min_length=1, max_length=2_000)
-    conversation: list[ConversationTurn] = Field(default_factory=list, max_length=6)
+    conversation: list[ConversationTurn] = Field(default_factory=list, max_length=12)
     include_sql: bool = False
 
 

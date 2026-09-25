@@ -2,8 +2,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.domain.models import DomainCatalog
-from app.domain.selector import DomainSelection
 from app.models import ConversationTurn, JsonScalar, UserContext
 
 
@@ -27,6 +25,17 @@ class GeographyKind(StrEnum):
     ZIP = "zip"
 
 
+class PlanDecision(StrEnum):
+    QUERY = "query"
+    CLARIFICATION = "clarification"
+    DENIED = "denied"
+
+
+class KnowledgeCitation(AgentModel):
+    document: str = Field(min_length=1, max_length=120)
+    heading: str = Field(min_length=1, max_length=200)
+
+
 class GeographyReference(AgentModel):
     kind: GeographyKind
     name: str = Field(min_length=1, max_length=120)
@@ -34,20 +43,29 @@ class GeographyReference(AgentModel):
 
 
 class AnalyticsPlan(AgentModel):
-    metric_id: str
-    time_window_id: str
-    comparison_time_window_ids: list[str]
-    dimension_ids: list[str]
-    filters: list[str]
-    assumptions: list[str]
+    decision: PlanDecision = PlanDecision.QUERY
+    response: str | None = Field(default=None, max_length=500)
+    resolved_question: str = Field(default="", max_length=2_000)
+    evidence: list[KnowledgeCitation] = Field(default_factory=list, max_length=8)
+    metric_id: str = Field(default="", max_length=120)
+    time_window_id: str = Field(default="", max_length=120)
+    comparison_time_window_ids: list[str] = Field(default_factory=list)
+    dimension_ids: list[str] = Field(default_factory=list)
+    filters: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
     geography: GeographyReference | None = None
-    sql: str
-    parameters: list[QueryParameter]
+    sql: str = ""
+    parameters: list[QueryParameter] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_plan(self) -> "AnalyticsPlan":
-        if not self.sql.strip():
-            raise ValueError("sql must not be blank")
+        if self.decision is PlanDecision.QUERY and not self.sql.strip():
+            raise ValueError("query decisions require SQL")
+        if self.decision is not PlanDecision.QUERY:
+            if not self.response or not self.response.strip():
+                raise ValueError("non-query decisions require a response")
+            if self.sql.strip() or self.parameters:
+                raise ValueError("non-query decisions cannot include SQL or parameters")
         if len(self.sql) > 12_000:
             raise ValueError("sql exceeds the maximum plan size")
         if len(self.parameters) > 20:
@@ -79,40 +97,9 @@ class PlanningContext(AgentModel):
     question: str
     conversation: list[ConversationTurn]
     user: UserContext
-    selection: DomainSelection
     schema_context: dict[str, list[str]]
-    domain_context: dict[str, object]
 
 
 class QueryResult(AgentModel):
     columns: list[str]
     rows: list[dict[str, JsonScalar]]
-
-
-def build_domain_context(
-    catalog: DomainCatalog,
-    selection: DomainSelection,
-) -> dict[str, object]:
-    metric = catalog.metrics_by_id[selection.metric_ids[0]]
-    related_metric_ids = {
-        component.metric
-        for component in (metric.numerator, metric.denominator)
-        if component is not None
-    }
-    metrics = [metric, *(catalog.metrics_by_id[item] for item in sorted(related_metric_ids))]
-
-    return {
-        "metrics": [item.model_dump(mode="json", exclude={"sources"}) for item in metrics],
-        "time_windows": [
-            catalog.time_windows_by_id[item].model_dump(mode="json", exclude={"sources"})
-            for item in [selection.time_window_id, *selection.comparison_time_window_ids]
-        ],
-        "dimensions": [
-            catalog.dimensions_by_id[item].model_dump(mode="json", exclude={"sources"})
-            for item in selection.dimension_ids
-        ],
-        "data_sources": [
-            catalog.data_sources_by_id[item].model_dump(mode="json", exclude={"sources"})
-            for item in selection.data_source_ids
-        ],
-    }

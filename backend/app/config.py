@@ -49,9 +49,7 @@ class Settings(BaseSettings):
     openai_reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "medium"
     agent_max_repairs: int = Field(default=1, ge=0, le=2)
     agent_max_rows: int = Field(default=100, ge=1, le=500)
-    domain_catalog_path: Path = (
-        Path(__file__).resolve().parents[2] / "domain" / "domain_catalog.yaml"
-    )
+    domain_docs_path: Path = Path(__file__).resolve().parents[2] / "docs"
 
     @field_validator("openai_api_key", mode="before")
     @classmethod

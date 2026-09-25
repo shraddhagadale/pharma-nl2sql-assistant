@@ -72,31 +72,30 @@ execution, and fallback boundaries are documented in [docs/agent.md](docs/agent.
 
 ## Evaluation
 
-Run the versioned golden and adversarial suite with:
+Run the versioned SQL security-policy suite with:
 
 ```bash
 backend/.venv/bin/python scripts/run_evaluation.py
 ```
 
-The suite currently passes 24/24 deterministic cases covering business-rule
-selection, prompt/role injection, dangerous SQL, WAC boundaries,
-parameterization, and row limits. The complete evidence and the separate live
-model gate are documented in [docs/evaluation.md](docs/evaluation.md).
+The suite covers dangerous SQL, WAC boundaries, parameterization, and row
+limits. Domain interpretation and multi-turn behavior are evaluated separately
+through Markdown retrieval tests and the live model gate documented in
+[docs/evaluation.md](docs/evaluation.md).
 
-## Domain catalog
+## Domain knowledge
 
-Phase 6 adds a deterministic, provenance-checked catalog of pharmaceutical
-metrics, time windows, dimensions, data sources, and security rules. Validate
-it independently with:
+The supplied Markdown files are the runtime source of pharmaceutical business
+knowledge. The agent searches and reads their sections through bounded local
+tools before producing an analytics plan; there is no duplicated YAML catalog.
+Run the retrieval tests with:
 
 ```bash
-backend/.venv/bin/python scripts/validate_domain_catalog.py
+backend/.venv/bin/python -m pytest backend/tests/test_domain_knowledge.py
 ```
 
-The supplied Markdown files remain authoritative. See
-[docs/domain_catalog.md](docs/domain_catalog.md) for the review and provenance
-workflow and [domain/golden_examples.yaml](domain/golden_examples.yaml) for the
-initial business-language examples.
+See [docs/domain_knowledge.md](docs/domain_knowledge.md) for document scope,
+search behavior, tool contracts, and update workflow.
 
 ## Full synthetic dataset
 
@@ -125,11 +124,11 @@ boundaries, live evidence, cost warning, and model-secret limitation.
 
 ## Current status
 
-Phase 10 complete — implementation, deployment automation, deterministic
-evaluation, adversarial coverage, and final evidence are in place. The public
-application and deterministic Checkpoint 5 cloud gates pass against the complete
-RDS dataset. The only open gate is live remote-model conversation testing,
-because no OpenAI API key was available for the server-side runtime secret.
+Phase 10 implementation and deployment automation are complete. The public
+application runs against the complete RDS dataset and the remote model is
+configured. Live testing identified a rigid catalog/context limitation; the
+current release replaces that layer with direct Markdown knowledge tools and
+must pass the updated cloud conversation gate after deployment.
 
 ## Source material
 

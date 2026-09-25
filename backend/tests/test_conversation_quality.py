@@ -1,19 +1,11 @@
-from pathlib import Path
-
 import pytest
 
 from app.agent.models import AnalyticsPlan, AnswerSummary, QueryResult
 from app.agent.workflow import AgentWorkflow
 from app.audit import AuditLogger
-from app.domain.catalog import CatalogRepository
 from app.models import ChatStatus, UserContext, UserRole
 from app.sql.validator import SqlValidator
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CATALOG = CatalogRepository.load(
-    PROJECT_ROOT / "domain" / "domain_catalog.yaml",
-    project_root=PROJECT_ROOT,
-)
 VALID_SQL = """
     SELECT SUM(s.pack_units) AS paid_demand
     FROM sales AS s
@@ -94,7 +86,6 @@ class QualityGeography:
 
 def workflow(model, executor, *, geography=None) -> AgentWorkflow:
     return AgentWorkflow(
-        catalog=CATALOG,
         model=model,
         validator=SqlValidator(max_rows=100),
         executor=executor,

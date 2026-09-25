@@ -7,8 +7,8 @@ Date verified: 2026-09-25
 The project separates reproducible safety/correctness evaluation from live LLM
 behavior:
 
-1. **Deterministic evaluation** checks business-language selection, role policy,
-   SQL structure, business predicates, parameterization, and result bounds. It
+1. **Deterministic evaluation** checks Markdown knowledge loading/search, SQL
+   structure, role-visible columns, parameterization, and result bounds. It
    requires no external model and must pass on every change.
 2. **Integration evaluation** exercises the actual FastAPI workflow, SQL
    validator, role-specific connection pools, PostgreSQL RLS/grants, and React
@@ -29,27 +29,26 @@ backend/.venv/bin/python scripts/run_evaluation.py
 backend/.venv/bin/python scripts/run_evaluation.py --json
 ```
 
-Current result: **24/24 passed**.
+Current result: **11/11 SQL-policy cases passed**.
 
 | Suite | Cases | Coverage |
 | --- | ---: | --- |
-| Golden selection | 8 | Metrics, periods, dimensions, sources, defaults, comparison, and role denial |
-| Adversarial selection | 4 | Prompt override, role spoofing, hidden pricing intent, and unknown-request defaults |
-| SQL policy | 12 | Stacked statements, system catalogs, file access, comments, star selection, nested WAC, wrong periods, literal injection, cross joins, row limits, executive revenue, and named parameters |
+| SQL policy | 11 | Stacked statements, system catalogs, file access, comments, star selection, nested WAC, literal injection, cross joins, row limits, executive revenue, and named parameters |
 
-The source cases are versioned in `domain/golden_examples.yaml` and
-`evaluation/adversarial_cases.yaml`. `backend/tests/test_evaluation_suite.py`
-makes the complete suite part of the normal test run.
+The source cases are versioned in `evaluation/sql_policy_cases.json`.
+`backend/tests/test_evaluation_suite.py` makes the suite part of the normal test
+run. `backend/tests/test_domain_knowledge.py` independently verifies the approved
+document set, retrieval, exact-section reads, digests, and path boundaries.
 
 ## Regression evidence
 
-- Backend: **59 tests passed**, including real local PostgreSQL product-flow
+- Backend: **52 tests passed**, including real local PostgreSQL product-flow
   tests across RAM, director, and executive identities plus generalized
   conversation-outcome and geography-scope coverage.
 - Frontend: type checking and linting passed; **3 component tests passed**; the
   production Vite build passed.
 - Local containers: database fixture, RLS/WAC security, same-origin frontend,
-  CSP headers, sessions, and pre-model denial smoke tests passed.
+  CSP headers, sessions, and access-limited response smoke tests passed.
 - Terraform: formatting, validation, and the mocked security test passed; the
   live stack reported **no drift** after deployment.
 - Cloud full data: exact counts and checksums passed for 40,000 organizations,
@@ -60,8 +59,8 @@ makes the complete suite part of the normal test run.
 
 ## Live cloud conversation gate
 
-After `openai_api_key` is securely added to the application-runtime secret and
-the application is redeployed, run:
+With `openai_api_key` configured in the application-runtime secret and the
+application deployed, run:
 
 ```bash
 python3 scripts/cloud_conversation_smoke_test.py http://100.28.234.67
@@ -69,17 +68,16 @@ python3 scripts/cloud_conversation_smoke_test.py http://100.28.234.67
 
 The script verifies:
 
-- RAM revenue denial before model execution;
+- RAM revenue denial without allowing WAC SQL to execute;
 - RAM paid demand;
 - director top accounts;
-- a bounded multi-turn period follow-up;
+- a bounded marker-free multi-turn period follow-up with SQL semantics checked;
 - executive gross revenue; and
 - market share with safe zero-denominator handling.
 
-Current result: **not run to completion because no OpenAI API key is
-configured**. The deployed backend returns the intended safe HTTP 503 on the
-first model-dependent case. This is an external configuration gap, not a
-reported pass.
+The previous live run exposed incorrect follow-up inheritance and silent
+three-month defaults. The updated Markdown-grounded planner must be redeployed
+and the live gate rerun before this release is reported as passed.
 
 ## Known limitations
 
@@ -87,8 +85,9 @@ reported pass.
   only the synthetic assignment data.
 - Demo user selection is not production authentication.
 - The generated `market_data` rows are all competitors, so the synthetic
-  denominator does not demonstrate branded rows in that source even though the
-  documented formula is enforced.
-- Model quality, latency, and repair rate still need live measurements once the
-  runtime key is configured. The deterministic validator and database controls
-  do not depend on that outcome.
+  denominator does not demonstrate branded rows in that source. Domain-formula
+  accuracy is evaluated through grounded live-agent cases rather than duplicated
+  validator rules.
+- Model quality, retrieval relevance, latency, and repair rate require continued
+  live measurement. The deterministic validator and database controls do not
+  depend on that outcome.

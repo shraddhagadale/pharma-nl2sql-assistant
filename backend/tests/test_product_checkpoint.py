@@ -10,10 +10,17 @@ class CheckpointPlanningModel:
 
     async def plan(self, context):
         self.plan_calls += 1
-        selection = context.selection
-        metric_id = selection.metric_ids[0]
+        question = context.question.casefold()
 
-        if metric_id == "gross_revenue":
+        if "pricing" in question or "revenue" in question:
+            if not context.user.can_view_wac:
+                return AnalyticsPlan(
+                    decision="denied",
+                    response=(
+                        "Revenue in dollars is available only to executives. "
+                        "I can show paid demand instead."
+                    ),
+                )
             return AnalyticsPlan(
                 metric_id="gross_revenue",
                 time_window_id="last_month",
@@ -31,7 +38,7 @@ class CheckpointPlanningModel:
                 parameters=[],
             )
 
-        if selection.dimension_ids == ["account"]:
+        if "account" in question:
             return AnalyticsPlan(
                 metric_id="paid_demand",
                 time_window_id="last_quarter",
@@ -55,7 +62,7 @@ class CheckpointPlanningModel:
                 parameters=[],
             )
 
-        if selection.comparison_time_window_ids:
+        if "versus" in question or "compare" in question:
             return AnalyticsPlan(
                 metric_id="paid_demand",
                 time_window_id="prior_r3m",
@@ -142,7 +149,7 @@ def test_pricing_denial_and_executive_revenue(settings) -> None:
         denied = ask(client, "Show pricing last month")
         assert denied["status"] == "denied"
         assert denied["sql"] is None
-        assert model.plan_calls == 0
+        assert model.plan_calls == 1
 
         login(client, "U001")
         revenue = ask(client, "Show gross revenue last month")

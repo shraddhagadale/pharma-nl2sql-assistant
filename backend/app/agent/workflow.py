@@ -3,20 +3,17 @@ from time import perf_counter
 from app.agent.models import (
     AnalyticsPlan,
     AnswerSummary,
+    PlanDecision,
     PlanningContext,
     QueryResult,
-    build_domain_context,
 )
 from app.agent.outcomes import ConversationOutcomeClassifier
 from app.agent.provider import PlanningModel, PlanningModelError
 from app.audit import AuditEvent, AuditLogger
 from app.db.geography import GeographyScopeRepository
-from app.domain.models import DomainCatalog
-from app.domain.selector import DomainRuleSelector, SelectionStatus
 from app.models import (
     ChatResponse,
     ChatStatus,
-    ConversationRole,
     ConversationTurn,
     UserContext,
 )
@@ -33,7 +30,6 @@ class AgentWorkflow:
     def __init__(
         self,
         *,
-        catalog: DomainCatalog,
         model: PlanningModel,
         validator: SqlValidator,
         executor: QueryExecutor,
@@ -41,8 +37,6 @@ class AgentWorkflow:
         audit: AuditLogger,
         max_repairs: int,
     ) -> None:
-        self.catalog = catalog
-        self.selector = DomainRuleSelector(catalog)
         self.model = model
         self.validator = validator
         self.executor = executor
@@ -60,39 +54,12 @@ class AgentWorkflow:
         request_id: str,
     ) -> ChatResponse:
         started = perf_counter()
-        selection = self.selector.select(
-            question,
-            role=user.role,
-            context_question=self._selection_context(question, conversation),
-        )
         context = PlanningContext(
             question=question,
             conversation=conversation,
             user=user,
-            selection=selection,
             schema_context=role_safe_schema(user.role),
-            domain_context=build_domain_context(self.catalog, selection),
         )
-
-        if selection.status is SelectionStatus.DENIED:
-            answer = selection.denied_reason or "This request is not available for your role."
-            if selection.alternative_metric_id:
-                alternative = self.catalog.metrics_by_id[selection.alternative_metric_id]
-                answer += f" I can show {alternative.label.lower()} instead."
-            self._record(
-                request_id=request_id,
-                user=user,
-                outcome="denied",
-                started=started,
-                row_count=0,
-                error_code="role_policy",
-            )
-            return ChatResponse(
-                status=ChatStatus.DENIED,
-                answer=answer,
-                assumptions=[self._scope_assumption(user)],
-                request_id=request_id,
-            )
 
         try:
             plan = await self.model.plan(context)
@@ -106,6 +73,31 @@ class AgentWorkflow:
                 error_code="model_unavailable",
             )
             raise AgentUnavailableError("The analytics model is unavailable") from error
+
+        if plan.decision is not PlanDecision.QUERY:
+            status = (
+                ChatStatus.DENIED
+                if plan.decision is PlanDecision.DENIED
+                else ChatStatus.CLARIFICATION
+            )
+            self._record(
+                request_id=request_id,
+                user=user,
+                outcome=status.value,
+                started=started,
+                row_count=0,
+                error_code=(
+                    "agent_access_decision"
+                    if status is ChatStatus.DENIED
+                    else "agent_clarification"
+                ),
+            )
+            return ChatResponse(
+                status=status,
+                answer=plan.response or "Please clarify the requested analysis.",
+                assumptions=[self._scope_assumption(user)],
+                request_id=request_id,
+            )
 
         preflight = ConversationOutcomeClassifier.before_execution(plan, user=user)
         if preflight is None and plan.geography is not None and self.geography is not None:
@@ -140,8 +132,6 @@ class AgentWorkflow:
                 validated = self.validator.validate(
                     plan,
                     role=user.role,
-                    catalog=self.catalog,
-                    selection=selection,
                 )
                 break
             except SqlValidationError as error:
@@ -264,28 +254,6 @@ class AgentWorkflow:
         return AnswerSummary(
             answer="I found the requested information and included it below.",
             notes=[],
-        )
-
-    @staticmethod
-    def _selection_context(
-        question: str,
-        conversation: list[ConversationTurn],
-    ) -> str | None:
-        normalized = question.casefold().strip()
-        follow_up_markers = (
-            "what about",
-            "how about",
-            "and last",
-            "instead",
-            "same ",
-            "those ",
-            "them ",
-        )
-        if not any(marker in normalized for marker in follow_up_markers):
-            return None
-        return next(
-            (turn.content for turn in reversed(conversation) if turn.role is ConversationRole.USER),
-            None,
         )
 
     @staticmethod

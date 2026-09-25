@@ -33,12 +33,4 @@ curl --fail --silent --show-error \
 
 python3 -c 'import json, sys; user=json.load(open(sys.argv[1])); assert user["role"] == "ram"; assert user["can_view_wac"] is False' "$body_file"
 
-curl --fail --silent --show-error \
-    --cookie "$cookie_file" \
-    --header 'Content-Type: application/json' \
-    --data '{"question":"Show pricing last month"}' \
-    "$base_url/api/v1/chat" >"$body_file"
-
-python3 -c 'import json, sys; result=json.load(open(sys.argv[1])); assert result["status"] == "denied"; assert result["sql"] is None' "$body_file"
-
-echo "Frontend smoke test passed: static UI, security headers, same-origin session, and pre-model pricing denial verified."
+echo "Frontend smoke test passed: static UI, security headers, and same-origin session verified."
