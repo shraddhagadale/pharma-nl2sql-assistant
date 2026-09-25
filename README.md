@@ -70,6 +70,19 @@ routes and [docs/frontend.md](docs/frontend.md) for the UI workflow and tests.
 The conversational route is `POST /api/v1/chat`. Its model, validator, repair,
 execution, and fallback boundaries are documented in [docs/agent.md](docs/agent.md).
 
+## Evaluation
+
+Run the versioned golden and adversarial suite with:
+
+```bash
+backend/.venv/bin/python scripts/run_evaluation.py
+```
+
+The suite currently passes 24/24 deterministic cases covering business-rule
+selection, prompt/role injection, dangerous SQL, WAC boundaries,
+parameterization, and row limits. The complete evidence and the separate live
+model gate are documented in [docs/evaluation.md](docs/evaluation.md).
+
 ## Domain catalog
 
 Phase 6 adds a deterministic, provenance-checked catalog of pharmaceutical
@@ -112,17 +125,17 @@ boundaries, live evidence, cost warning, and model-secret limitation.
 
 ## Current status
 
-Phase 9 complete — the two-container application is deployed on EC2 against the
-complete private RDS dataset, with runtime values in Secrets Manager and a
-verified public same-origin endpoint. Checkpoint 5's deterministic cloud gates
-pass; live remote-model conversations remain configuration-dependent because no
-OpenAI API key was available. Next: Phase 10 evaluation and final polish.
+Phase 10 complete — implementation, deployment automation, deterministic
+evaluation, adversarial coverage, and final evidence are in place. The public
+application and deterministic Checkpoint 5 cloud gates pass against the complete
+RDS dataset. The only open gate is live remote-model conversation testing,
+because no OpenAI API key was available for the server-side runtime secret.
 
 ## Source material
 
 - `docs/`: supplied pharmaceutical business rules and security model
 - `schema/generate_data.py`: deterministic synthetic-data generator
 - `schema/seed_data.sql`: small development fixture
-- `schema/create_tables.sql`: supplied SQLite schema, retained as reference until the PostgreSQL migrations are added
+- `schema/create_tables.sql`: supplied SQLite schema retained as source reference alongside the PostgreSQL migrations
 
 Generated CSV files are intentionally excluded from Git.
