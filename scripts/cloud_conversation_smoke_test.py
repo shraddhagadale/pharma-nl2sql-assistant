@@ -31,8 +31,8 @@ def request_json(
         detail = error.read().decode("utf-8", errors="replace")[:500]
         if error.code == 503:
             raise RuntimeError(
-                "the deployed model is unavailable; configure openai_api_key in the "
-                "application runtime secret and redeploy"
+                "the deployed model is temporarily unavailable; verify provider health "
+                "and runtime configuration, then retry"
             ) from error
         raise AssertionError(
             f"{request.method} {url} returned {error.code}: {detail}"
@@ -61,15 +61,18 @@ def ask(
     *,
     include_sql: bool = False,
 ) -> dict[str, Any]:
-    return request_json(
-        opener,
-        f"{base_url}/api/v1/chat",
-        payload={
-            "question": question,
-            "conversation": conversation or [],
-            "include_sql": include_sql,
-        },
-    )
+    try:
+        return request_json(
+            opener,
+            f"{base_url}/api/v1/chat",
+            payload={
+                "question": question,
+                "conversation": conversation or [],
+                "include_sql": include_sql,
+            },
+        )
+    except RuntimeError as error:
+        raise RuntimeError(f"{question!r}: {error}") from error
 
 
 def run(base_url: str) -> None:

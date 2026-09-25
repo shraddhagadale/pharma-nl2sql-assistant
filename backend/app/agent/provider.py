@@ -21,6 +21,8 @@ from app.agent.prompts import (
 )
 from app.domain.knowledge import DomainKnowledgeError, DomainKnowledgeRepository
 
+MAX_DOMAIN_TOOL_CALLS = 6
+
 
 class PlanningModelError(RuntimeError):
     pass
@@ -139,8 +141,9 @@ class OpenAIPlanningModel:
     ) -> AnalyticsPlan:
         input_items: list[object] = [{"role": "user", "content": content}]
         observed_sections: set[tuple[str, str]] = set()
+        tool_calls_used = 0
 
-        for tool_round in range(4):
+        for response_round in range(MAX_DOMAIN_TOOL_CALLS + 1):
             try:
                 response = await self.client.responses.parse(
                     model=self.model,
@@ -149,7 +152,7 @@ class OpenAIPlanningModel:
                     tools=self.domain_knowledge.tool_definitions,
                     tool_choice=(
                         {"type": "function", "name": "search_domain_knowledge"}
-                        if tool_round == 0
+                        if response_round == 0
                         else "auto"
                     ),
                     parallel_tool_calls=False,
@@ -174,6 +177,9 @@ class OpenAIPlanningModel:
                         raise PlanningModelError("The analytics plan cited unread domain knowledge")
                 return plan
 
+            if tool_calls_used + len(tool_calls) > MAX_DOMAIN_TOOL_CALLS:
+                raise PlanningModelError("The model exceeded the domain knowledge tool limit")
+            tool_calls_used += len(tool_calls)
             input_items.extend(response.output)
             for tool_call in tool_calls:
                 try:
@@ -191,8 +197,7 @@ class OpenAIPlanningModel:
                         "output": json.dumps(result, sort_keys=True),
                     }
                 )
-
-        raise PlanningModelError("The model exceeded the domain knowledge tool limit")
+        raise PlanningModelError("The model did not return a final analytics plan")
 
     @staticmethod
     def _record_observed_sections(
